@@ -13,6 +13,8 @@ class ASamGameMode : public AGameModeBase
 
 public:
 	ASamGameMode();
+
+
 };
 
 

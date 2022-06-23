@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SamGameMode.h"
-#include "PlayerCharacter.h"
+//#include "Enemies/EnemySpawnerComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
 ASamGameMode::ASamGameMode()
@@ -12,4 +12,5 @@ ASamGameMode::ASamGameMode()
 	//{
 	//	DefaultPawnClass = PlayerPawnBPClass.Class;
 	//}
+
 }

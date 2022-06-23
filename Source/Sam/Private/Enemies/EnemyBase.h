@@ -7,9 +7,6 @@
 
 #include "EnemyBase.generated.h"
 
-class UCapsuleComponent;
-class USkeletalMeshComponent;
-
 UCLASS()
 class AEnemyBase : public AActor
 {
@@ -20,14 +17,29 @@ public:
 	AEnemyBase();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		UCapsuleComponent* Capsule;
+		class UCapsuleComponent* Capsule;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		USkeletalMeshComponent* SkelMesh;
+		class USkeletalMeshComponent* SkelMesh;
 
+	class UEnemySpawnerComponent* Spawner;
+
+	void Die();
+
+	void Init();
+
+	FTimerHandle ReleaseToPoolTH;
+
+	void ReleaseToPool();
+
+	bool IsAlive = false;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+
+	void ActivateRagdoll();
+
 
 public:	
 	// Called every frame
