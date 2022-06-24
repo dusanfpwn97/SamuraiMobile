@@ -26,6 +26,12 @@ protected:
 
 	AActor* CurrentTarget;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float BaseSpeed = 700.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float CurrentSpeed = 700.f;
+
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 

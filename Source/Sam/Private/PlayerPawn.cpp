@@ -99,7 +99,7 @@ void APlayerPawn::MoveTowardsTarget()
 
 
 
-	FVector DeltaLoc = LastDirection * 700 * World->DeltaTimeSeconds;
+	FVector DeltaLoc = LastDirection * CurrentSpeed * World->DeltaTimeSeconds;
 	AddActorWorldOffset(DeltaLoc, true);
 
 }
