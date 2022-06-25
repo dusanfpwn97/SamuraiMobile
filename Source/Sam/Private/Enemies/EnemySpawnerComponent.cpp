@@ -44,12 +44,12 @@ void UEnemySpawnerComponent::SpawnEnemy()
 	}
 
 	float Y = FMath::FRandRange(-400.f, 400.f);
-	float X = SpawnedEnemies.Num() * 1000.f + 2200.f;
+	float X = SpawnedEnemies.Num() * 2500.f + 2200.f;
 	
 	UClass* TempClass = ClassToSpawn.Get();
 
 	FVector Loc = FVector(X, Y, 86.f);
-	FRotator Rot = FRotator::ZeroRotator;
+	FRotator Rot = FRotator(0, 180, 0);
 
 	AEnemyBase* SpawnedActor = (AEnemyBase*) SpawnActorFromPool(TempClass);
 	

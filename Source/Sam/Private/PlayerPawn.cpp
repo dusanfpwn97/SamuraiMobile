@@ -24,7 +24,7 @@ APlayerPawn::APlayerPawn()
 	SKMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SKMesh"));
 	SKMesh->SetupAttachment(RootComponent);
 	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
-	Weapon->SetupAttachment(SKMesh, "Weapon");
+	Weapon->SetupAttachment(SKMesh, "Katana_r");
 
 	TargetArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	TargetArm->SetupAttachment(SKMesh);

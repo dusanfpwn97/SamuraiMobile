@@ -23,7 +23,7 @@ protected:
 		class USpringArmComponent* TargetArm;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UCameraComponent* FollowCamera;
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AActor* CurrentTarget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
