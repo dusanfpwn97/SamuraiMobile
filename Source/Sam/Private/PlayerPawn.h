@@ -3,20 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
 
 #include "PlayerPawn.generated.h"
 
 UCLASS(config=Game)
-class APlayerPawn : public APawn
+class APlayerPawn : public ACharacter
 {
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UCapsuleComponent* Capsule;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class USkeletalMeshComponent* SKMesh;
+
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UStaticMeshComponent* Weapon;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -17,17 +17,15 @@
 
 APlayerPawn::APlayerPawn()
 {
-	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule"));
-	Capsule->SetCapsuleSize(42, 96, false);
-	RootComponent = Capsule;
-
-	SKMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SKMesh"));
-	SKMesh->SetupAttachment(RootComponent);
+	//CapsuleSiz
+	GetCapsuleComponent()->SetCapsuleSize(42, 96, false);
+	RootComponent = GetCapsuleComponent();
+	
 	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
-	Weapon->SetupAttachment(SKMesh, "Katana_r");
+	Weapon->SetupAttachment(GetMesh(), "Katana_r");
 
 	TargetArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	TargetArm->SetupAttachment(SKMesh);
+	TargetArm->SetupAttachment(GetMesh());
 	TargetArm->TargetArmLength = 400.0f; // The camera follows at this distance behind the character	
 	TargetArm->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
@@ -85,7 +83,7 @@ void APlayerPawn::MoveTowardsTarget()
 	{
 		AEnemyBase* Enemy = Cast<AEnemyBase>(CurrentTarget);
 		Enemy->Die();
-		Enemy->SkelMesh->AddForce(LastDirection * 5000000);
+		Enemy->SkelMesh->AddForce(LastDirection * 50000);
 		CurrentTarget = nullptr;
 
 		SetNextTarget();
