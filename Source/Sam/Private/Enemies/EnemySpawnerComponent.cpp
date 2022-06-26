@@ -44,7 +44,7 @@ void UEnemySpawnerComponent::SpawnEnemy()
 	}
 
 	float Y = FMath::FRandRange(-400.f, 400.f);
-	float X = SpawnedEnemies.Num() * 2500.f + 2200.f;
+	float X = SpawnedEnemies.Num() * FMath::FRandRange(2000.f, 2800.f) + 2200.f;
 	
 	UClass* TempClass = ClassToSpawn.Get();
 

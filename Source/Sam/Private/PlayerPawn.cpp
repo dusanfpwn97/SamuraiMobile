@@ -13,6 +13,7 @@
 #include "../SamGameMode.h"
 #include "Enemies/EnemyBase.h"
 #include "Enemies/EnemySpawnerComponent.h"
+#include "Misc/BaseWeapon.h"
 
 
 APlayerPawn::APlayerPawn()
@@ -21,9 +22,6 @@ APlayerPawn::APlayerPawn()
 	GetCapsuleComponent()->SetCapsuleSize(42, 96, false);
 	RootComponent = GetCapsuleComponent();
 	
-	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
-	Weapon->SetupAttachment(GetMesh(), "Katana_r");
-
 	TargetArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	TargetArm->SetupAttachment(GetMesh());
 	TargetArm->TargetArmLength = 400.0f; // The camera follows at this distance behind the character	
@@ -77,23 +75,20 @@ void APlayerPawn::MoveTowardsTarget()
 		}
 	}
 
-	float Distance = FVector::Dist(CurrentTarget->GetActorLocation(), GetActorLocation());
+	FVector TargetLocation = CurrentTarget->GetActorLocation();
+	TargetLocation += GetActorRightVector() * -26.f;
+	//TargetLocation += GetActorForwardVector() * -166.f;
 
-	if (Distance < 100)
-	{
-		AEnemyBase* Enemy = Cast<AEnemyBase>(CurrentTarget);
-		Enemy->Die();
-		Enemy->SkelMesh->AddForce(LastDirection * 50000);
-		CurrentTarget = nullptr;
+	float Distance = FVector::Dist(TargetLocation, GetActorLocation());
 
-		SetNextTarget();
-		if (!CurrentTarget) return;
-	}
+	//if (Distance < 120) return;
 
-	FVector Direction = CurrentTarget->GetActorLocation() - GetActorLocation();
+	FVector Direction = TargetLocation - GetActorLocation();
 	Direction.Normalize();
 
-	LastDirection = FMath::VInterpTo(LastDirection, Direction, World->DeltaTimeSeconds, 3.f);
+	LastDirection = FMath::VInterpTo(LastDirection, Direction, World->DeltaTimeSeconds, 7.f);
+
+	if (Distance < 150) return;
 
 
 
@@ -157,4 +152,32 @@ void APlayerPawn::Tick(float DeltaTime)
 	MoveTowardsTarget();
 
 	UpdateRotation();
+}
+
+void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
+{
+	WepClass.LoadSynchronous();
+	if (CurrentWeapon) CurrentWeapon->Destroy();
+
+	UWorld* World = GetWorld();
+	if (!WepClass.IsValid() || !World) return;
+
+	UClass* WeaponClass = WepClass.Get();
+
+	FTransform Transform;
+	Transform.SetScale3D(FVector(1.f, 1.f, 1.f));
+	Transform.SetLocation(GetActorLocation());
+
+	ABaseWeapon* Wep = (ABaseWeapon*)World->SpawnActor<ABaseWeapon>(WeaponClass, Transform);
+	
+	if (!Wep)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT("Could not spawn weapon!")));
+		return;
+	}
+	FAttachmentTransformRules Rules = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+
+
+	Wep->AttachToComponent(GetMesh(), Rules, FName("Katana_r"));
+	CurrentWeapon = Wep;
 }

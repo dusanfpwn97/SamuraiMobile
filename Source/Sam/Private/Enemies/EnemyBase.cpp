@@ -18,6 +18,7 @@ AEnemyBase::AEnemyBase()
 
 	SkelMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
 	SkelMesh->SetupAttachment(Capsule);
+	SkelMesh->SetCollisionProfileName(TEXT("EnemySKMesh"));
 }
 
 void AEnemyBase::Die()
@@ -60,6 +61,7 @@ void AEnemyBase::ActivateRagdoll()
 {
 	Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	
 
 	SkelMesh->SetCollisionProfileName(TEXT("Ragdoll"));
 

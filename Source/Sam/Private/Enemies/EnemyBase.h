@@ -24,6 +24,7 @@ public:
 
 	class UEnemySpawnerComponent* Spawner;
 
+	UFUNCTION(BlueprintCallable)
 	void Die();
 
 	void Init();

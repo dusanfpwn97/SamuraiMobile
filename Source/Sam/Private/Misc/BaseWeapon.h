@@ -1,0 +1,49 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "BaseWeapon.generated.h"
+
+class USceneComponent;
+
+
+UCLASS(Abstract)
+class ABaseWeapon : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	ABaseWeapon();
+
+	void Activate();
+	void Deactvate();
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UStaticMeshComponent* Mesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		USceneComponent* CollisionPoint1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		USceneComponent* CollisionPoint2;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		USceneComponent* CollisionPoint3;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		USceneComponent* CollisionPoint4;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		USceneComponent* CollisionPoint5;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		USceneComponent* CollisionPoint6;
+
+	TArray<USceneComponent*> CollisionPoints;
+
+public:	
+
+	UFUNCTION(BlueprintCallable)
+	float GetClosestCollisionDistance(AActor* Actor);
+
+};

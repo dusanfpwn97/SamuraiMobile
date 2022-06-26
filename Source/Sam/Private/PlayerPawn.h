@@ -7,6 +7,9 @@
 
 #include "PlayerPawn.generated.h"
 
+class ABaseWeapon;
+
+
 UCLASS(config=Game)
 class APlayerPawn : public ACharacter
 {
@@ -16,13 +19,14 @@ protected:
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UStaticMeshComponent* Weapon;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class USpringArmComponent* TargetArm;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UCameraComponent* FollowCamera;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AActor* CurrentTarget;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	ABaseWeapon* CurrentWeapon;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float BaseSpeed = 700.f;
@@ -35,8 +39,9 @@ protected:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-
+	UFUNCTION(BlueprintCallable)
 	void MoveTowardsTarget();
+	UFUNCTION(BlueprintCallable)
 	void SetNextTarget();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -47,6 +52,9 @@ public:
 
 	APlayerPawn();
 	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable)
+	void EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass);
 
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return TargetArm; }
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
