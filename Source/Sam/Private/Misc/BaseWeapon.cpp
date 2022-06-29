@@ -53,6 +53,7 @@ void ABaseWeapon::BeginPlay()
 {
 	Super::BeginPlay();
 	CollisionPoints.Add(CollisionPoint1);
+
 }
 
 float ABaseWeapon::GetClosestCollisionDistance(AActor* Actor)

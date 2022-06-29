@@ -14,6 +14,8 @@
 #include "Enemies/EnemyBase.h"
 #include "Enemies/EnemySpawnerComponent.h"
 #include "Misc/BaseWeapon.h"
+#include "Animation/AnimMontage.h"
+#include "Curves/CurveFloat.h"
 
 
 APlayerPawn::APlayerPawn()
@@ -133,26 +135,95 @@ void APlayerPawn::UpdateRotation()
 	SetActorRotation(LastDirection.Rotation());
 }
 
+void APlayerPawn::UpdateSpeed()
+{
+	UWorld* World = GetWorld();
+	if (!CurrentTarget || !World) return;
+
+	if (ActionState == EActionState::RUNNING)
+	{
+		if (FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) > AttackInfo.DistanceForSlowdown)
+		{
+			CurrentSpeed = RunSpeed;
+			return;
+		}
+		else
+		{
+			CurrentSpeed = PrepareToAttackSpeed;
+			return;
+		}
+	}
+	else if (ActionState == EActionState::DASHING)
+	{
+		if (!DashSpeedCurve)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
+			return;
+		}
+		else
+		{
+			CurrentSpeed = DashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
+			DashDeltaAccumulated += World->GetDeltaSeconds();
+		}
+	}
+	else if (ActionState == EActionState::STARTING_DASH)
+	{
+		if (!AttackInfo.StartDashSpeedCurve)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
+			return;
+		}
+		else
+		{
+			CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
+			DashDeltaAccumulated += World->GetDeltaSeconds();
+		}
+	}
+	else if(ActionState == EActionState::ATTACKING || ActionState == EActionState::NOT_MOVING)
+	{
+		CurrentSpeed = 0;
+		return;
+	}
+	else if(ActionState == EActionState::PREPARING_FOR_ATTACK)
+	{
+		CurrentSpeed = PrepareToAttackSpeed;
+		return;
+	}
+
+}
 
 void APlayerPawn::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
-	//Jump();
+
+	StartDashing();
 }
 
 void APlayerPawn::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
-	//StopJumping();
+	StartAttacking();
 }
 
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	UpdateSpeed();
 
 	MoveTowardsTarget();
 
 	UpdateRotation();
+
+
 }
+
+// Called when the game starts or when spawned
+void APlayerPawn::BeginPlay()
+{
+	Super::BeginPlay();
+
+	ActionState = EActionState::RUNNING;
+}
+
 
 void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 {
@@ -180,4 +251,64 @@ void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 
 	Wep->AttachToComponent(GetMesh(), Rules, FName("Katana_r"));
 	CurrentWeapon = Wep;
+}
+
+
+
+void APlayerPawn::StartDashing()
+{
+	UWorld* World = GetWorld();
+	if (!AttackInfo.StartDashSpeedCurve || !World || !AttackInfo.StartDashMontage)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Dash cannot be started. Something is null. PlayerPawn->StartDashing()")));
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
+
+	ActionState = EActionState::STARTING_DASH;
+	DashDeltaAccumulated = 0.f;
+
+	float MontageDuration = PlayAnimMontage(AttackInfo.StartDashMontage);
+
+	float MinTime, MaxTime;
+	AttackInfo.StartDashSpeedCurve->GetTimeRange(MinTime, MaxTime);
+
+	World->GetTimerManager().SetTimer(ScheduleNextActionTH, this, &APlayerPawn::ContinueDashing, MaxTime, false);
+
+}
+
+void APlayerPawn::ContinueDashing()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
+	ActionState = EActionState::DASHING;
+	DashDeltaAccumulated = 0.f;
+}
+
+void APlayerPawn::StartAttacking()
+{
+	UWorld* World = GetWorld();
+	if (!World || !AttackInfo.AttackMontage)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Attack cannot be started. Something is null. PlayerPawn->StartAttacking()")));
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
+	ActionState = EActionState::ATTACKING;
+
+	float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
+
+	World->GetTimerManager().SetTimer(ScheduleNextActionTH, this, &APlayerPawn::StartRunning, MontageDuration, false);
+
+}
+
+void APlayerPawn::StartRunning()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("StartRunning")));
+
+	ActionState = EActionState::RUNNING;
 }
