@@ -24,5 +24,5 @@ class ICombatInterface
 public:
 
 	
-	//virtual bool IsTargetable();
+	virtual void OnWeaponCollided(AActor* Actor, FName Bone);
 };

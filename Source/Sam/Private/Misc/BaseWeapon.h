@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Misc/CombatInterface.h"
 #include "BaseWeapon.generated.h"
 
 class USceneComponent;
 
 
 UCLASS(Abstract)
-class ABaseWeapon : public AActor
+class ABaseWeapon : public AActor, public ICombatInterface
 {
 	GENERATED_BODY()
 	
@@ -41,9 +42,16 @@ protected:
 
 	TArray<USceneComponent*> CollisionPoints;
 
+	TArray<AActor*> CollidedActors;
+
 public:	
 
 	UFUNCTION(BlueprintCallable)
 	float GetClosestCollisionDistance(AActor* Actor);
 
+	void StartCheckingCollision();
+	void CheckCollision();
+	void StopCheckingCollision();
+
+	FTimerHandle CheckCollitionTH;
 };

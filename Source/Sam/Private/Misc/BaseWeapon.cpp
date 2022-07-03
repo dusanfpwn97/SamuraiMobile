@@ -10,7 +10,7 @@
 // Sets default values
 ABaseWeapon::ABaseWeapon()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
@@ -31,12 +31,7 @@ ABaseWeapon::ABaseWeapon()
 	CollisionPoint5->SetupAttachment(Mesh);
 	CollisionPoint6->SetupAttachment(Mesh);
 
-	CollisionPoints.Add(CollisionPoint1);
-	CollisionPoints.Add(CollisionPoint2);
-	CollisionPoints.Add(CollisionPoint3);
-	CollisionPoints.Add(CollisionPoint4);
-	CollisionPoints.Add(CollisionPoint5);
-	CollisionPoints.Add(CollisionPoint6);
+
 
 }
 
@@ -52,8 +47,13 @@ void ABaseWeapon::Deactvate()
 void ABaseWeapon::BeginPlay()
 {
 	Super::BeginPlay();
-	CollisionPoints.Add(CollisionPoint1);
 
+	CollisionPoints.Add(CollisionPoint1);
+	CollisionPoints.Add(CollisionPoint2);
+	CollisionPoints.Add(CollisionPoint3);
+	CollisionPoints.Add(CollisionPoint4);
+	CollisionPoints.Add(CollisionPoint5);
+	CollisionPoints.Add(CollisionPoint6);
 }
 
 float ABaseWeapon::GetClosestCollisionDistance(AActor* Actor)
@@ -78,5 +78,42 @@ float ABaseWeapon::GetClosestCollisionDistance(AActor* Actor)
 	}
 
 	return ClosestDistance;
-	
+
+}
+
+void ABaseWeapon::StartCheckingCollision()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	CollidedActors.Empty();
+
+	World->GetTimerManager().SetTimer(CheckCollitionTH, this, &ABaseWeapon::CheckCollision, 0.007f, true);
+}
+
+void ABaseWeapon::CheckCollision()
+{
+
+	TArray<AActor*> Actors;
+	Mesh->GetOverlappingActors(Actors, AEnemyBase::StaticClass());
+
+	if (Actors.Num() == 0) return;
+
+	for (AActor* Act : Actors)
+	{
+		if(Act->GetClass()->ImplementsInterface(UCombatInterface::StaticClass()))
+		{
+			ICombatInterface* TempInterface = Cast<ICombatInterface>(Act);
+			if (!TempInterface) return;
+			TempInterface->OnWeaponCollided(Act, "None");
+			CollidedActors.AddUnique(Act);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("COLLISONSDWDQWDQWDWQ")));
+		}
+	}
+}
+
+void ABaseWeapon::StopCheckingCollision()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+
+	World->GetTimerManager().ClearTimer(CheckCollitionTH);
+	CollidedActors.Empty();
 }

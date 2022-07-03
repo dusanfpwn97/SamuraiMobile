@@ -71,6 +71,11 @@ void AEnemyBase::ActivateRagdoll()
 	SkelMesh->bBlendPhysics = true;
 }
 
+void AEnemyBase::OnWeaponCollided(AActor* Actor, FName Bone)
+{
+	Die();
+}
+
 // Called every frame
 void AEnemyBase::Tick(float DeltaTime)
 {

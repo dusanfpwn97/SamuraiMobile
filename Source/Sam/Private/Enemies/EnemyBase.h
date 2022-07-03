@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-
+#include "Misc/CombatInterface.h"
 #include "EnemyBase.generated.h"
 
 UCLASS()
-class AEnemyBase : public AActor
+class AEnemyBase : public AActor, public ICombatInterface
 {
 	GENERATED_BODY()
 	
@@ -41,9 +41,11 @@ protected:
 
 	void ActivateRagdoll();
 
+	virtual void OnWeaponCollided(AActor* Actor, FName Bone) override;
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
 
 };

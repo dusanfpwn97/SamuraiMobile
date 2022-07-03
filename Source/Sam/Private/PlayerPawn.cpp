@@ -288,6 +288,28 @@ void APlayerPawn::ContinueDashing()
 	DashDeltaAccumulated = 0.f;
 }
 
+void APlayerPawn::OnDamageNotifyStarted()
+{
+	if (ActionState != EActionState::ATTACKING || !CurrentWeapon || !CurrentTarget) return;
+	
+	AEnemyBase* Enemy = (AEnemyBase*)CurrentTarget;
+	if (!Enemy) return;
+	USkeletalMeshComponent * SKMComp = Enemy->SkelMesh;
+	if (!SKMComp) return;
+
+	CurrentWeapon->StartCheckingCollision();
+
+}
+
+void APlayerPawn::OnDamageNotifyEnded()
+{
+	CurrentWeapon->StopCheckingCollision();
+}
+
+void APlayerPawn::OnWeaponCollided(AActor* Actor, FName Bone)
+{
+}
+
 void APlayerPawn::StartAttacking()
 {
 	UWorld* World = GetWorld();
@@ -296,6 +318,8 @@ void APlayerPawn::StartAttacking()
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Attack cannot be started. Something is null. PlayerPawn->StartAttacking()")));
 		return;
 	}
+
+	//AttackInfo.AttackMontage->noti
 
 	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
 	ActionState = EActionState::ATTACKING;
@@ -308,7 +332,7 @@ void APlayerPawn::StartAttacking()
 
 void APlayerPawn::StartRunning()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("StartRunning")));
+
 
 	ActionState = EActionState::RUNNING;
 }

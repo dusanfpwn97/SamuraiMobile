@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-
+#include "Misc/CombatInterface.h"
 #include "PlayerPawn.generated.h"
 
 class ABaseWeapon;
@@ -44,7 +44,7 @@ struct FAttackInfo
 };
 
 UCLASS(config=Game)
-class APlayerPawn : public ACharacter
+class APlayerPawn : public ACharacter, public ICombatInterface
 {
 	GENERATED_BODY()
 
@@ -62,6 +62,11 @@ public:
 
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return TargetArm; }
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	UFUNCTION(BlueprintCallable)
+		void OnDamageNotifyStarted();
+	UFUNCTION(BlueprintCallable)
+		void OnDamageNotifyEnded();
 
 
 protected:
@@ -109,6 +114,9 @@ protected:
 	FTimerHandle ScheduleNextActionTH;
 
 
+
+	virtual void OnWeaponCollided(AActor* Actor, FName Bone) override;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector LastDirection;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -117,6 +125,7 @@ protected:
 	FAttackInfo AttackInfo;
 
 	float DashDeltaAccumulated;
+
 
 
 };

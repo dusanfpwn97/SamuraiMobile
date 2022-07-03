@@ -4,3 +4,8 @@
 #include "Misc/CombatInterface.h"
 
 // Add default functionality here for any ICombatInterface functions that are not pure virtual.
+
+void ICombatInterface::OnWeaponCollided(AActor* Actor, FName Bone)
+{
+	return;
+}
