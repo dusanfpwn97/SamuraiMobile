@@ -160,6 +160,11 @@ void APlayerPawn::UpdateSpeed()
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
 			return;
 		}
+		else if(FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) < AttackInfo.DistanceForSlowdown)
+		{
+			CurrentSpeed = PrepareToAttackSpeed;
+			return;
+		}
 		else
 		{
 			CurrentSpeed = DashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;

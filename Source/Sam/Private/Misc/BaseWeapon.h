@@ -44,6 +44,9 @@ protected:
 
 	TArray<AActor*> CollidedActors;
 
+
+	bool ShouldCheck;
+
 public:	
 
 	UFUNCTION(BlueprintCallable)
@@ -52,6 +55,8 @@ public:
 	void StartCheckingCollision();
 	void CheckCollision();
 	void StopCheckingCollision();
+
+	virtual void Tick(float DeltaTime) override;
 
 	FTimerHandle CheckCollitionTH;
 };

@@ -56,6 +56,16 @@ void ABaseWeapon::BeginPlay()
 	CollisionPoints.Add(CollisionPoint6);
 }
 
+void ABaseWeapon::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (ShouldCheck)
+	{
+		CheckCollision();
+	}
+}
+
 float ABaseWeapon::GetClosestCollisionDistance(AActor* Actor)
 {
 	if (!Actor) return -1.f;
@@ -78,7 +88,6 @@ float ABaseWeapon::GetClosestCollisionDistance(AActor* Actor)
 	}
 
 	return ClosestDistance;
-
 }
 
 void ABaseWeapon::StartCheckingCollision()
@@ -86,15 +95,37 @@ void ABaseWeapon::StartCheckingCollision()
 	UWorld* World = GetWorld(); if (!World) return;
 	CollidedActors.Empty();
 
-	World->GetTimerManager().SetTimer(CheckCollitionTH, this, &ABaseWeapon::CheckCollision, 0.007f, true);
+	World->GetTimerManager().SetTimer(CheckCollitionTH, this, &ABaseWeapon::CheckCollision, 0.017f, true);
+	ShouldCheck = true;
 }
 
 void ABaseWeapon::CheckCollision()
 {
+	TArray<UPrimitiveComponent*> Comps;
+	Mesh->GetOverlappingComponents(Comps);
 
+	if (Comps.Num() == 0) return;
+
+	for (UPrimitiveComponent* Comp : Comps)
+	{
+		AActor* TempOwner = Comp->GetOwner();
+		if (TempOwner)
+		{
+			if (TempOwner->GetClass()->ImplementsInterface(UCombatInterface::StaticClass()) && Comp->GetClass() == USkeletalMeshComponent::StaticClass())
+			{
+				ICombatInterface* TempInterface = Cast<ICombatInterface>(TempOwner);
+				if (!TempInterface) return;
+				TempInterface->OnWeaponCollided(TempOwner, "None");
+				CollidedActors.AddUnique(TempOwner);
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("COLLISONSDWDQWDQWDWQ")));
+			}
+		}
+	}
+
+	/*
 	TArray<AActor*> Actors;
 	Mesh->GetOverlappingActors(Actors, AEnemyBase::StaticClass());
-
+	
 	if (Actors.Num() == 0) return;
 
 	for (AActor* Act : Actors)
@@ -108,6 +139,7 @@ void ABaseWeapon::CheckCollision()
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("COLLISONSDWDQWDQWDWQ")));
 		}
 	}
+	*/
 }
 
 void ABaseWeapon::StopCheckingCollision()
@@ -116,4 +148,6 @@ void ABaseWeapon::StopCheckingCollision()
 
 	World->GetTimerManager().ClearTimer(CheckCollitionTH);
 	CollidedActors.Empty();
+
+	ShouldCheck = false;
 }
