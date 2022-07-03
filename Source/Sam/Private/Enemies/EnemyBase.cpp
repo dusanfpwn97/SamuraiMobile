@@ -71,7 +71,7 @@ void AEnemyBase::ActivateRagdoll()
 	SkelMesh->bBlendPhysics = true;
 }
 
-void AEnemyBase::OnWeaponCollided(AActor* Actor, FName Bone)
+void AEnemyBase::OnWeaponHit(AActor* Actor, FName Bone)
 {
 	Die();
 }

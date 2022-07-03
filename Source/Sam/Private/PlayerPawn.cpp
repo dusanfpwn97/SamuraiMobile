@@ -168,7 +168,8 @@ void APlayerPawn::UpdateSpeed()
 		else
 		{
 			CurrentSpeed = DashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
-			DashDeltaAccumulated += World->GetDeltaSeconds();
+			DashDeltaAccumulated += World->DeltaRealTimeSeconds;
+			
 		}
 	}
 	else if (ActionState == EActionState::STARTING_DASH)
@@ -181,7 +182,7 @@ void APlayerPawn::UpdateSpeed()
 		else
 		{
 			CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
-			DashDeltaAccumulated += World->GetDeltaSeconds();
+			DashDeltaAccumulated += World->DeltaRealTimeSeconds;
 		}
 	}
 	else if(ActionState == EActionState::ATTACKING || ActionState == EActionState::NOT_MOVING)
@@ -304,15 +305,22 @@ void APlayerPawn::OnDamageNotifyStarted()
 
 	CurrentWeapon->StartCheckingCollision();
 
+	//GetMesh()->SetPlayRate(0.01);
+	CustomTimeDilation = 0.1;
+
 }
 
 void APlayerPawn::OnDamageNotifyEnded()
 {
 	CurrentWeapon->StopCheckingCollision();
+	CustomTimeDilation = 1;
 }
 
-void APlayerPawn::OnWeaponCollided(AActor* Actor, FName Bone)
+void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 {
+	// TODO this will cause problems for multiple enemies
+	CurrentWeapon->StopCheckingCollision();
+	//CustomTimeDilation = 1;
 }
 
 void APlayerPawn::StartAttacking()
@@ -323,8 +331,6 @@ void APlayerPawn::StartAttacking()
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Attack cannot be started. Something is null. PlayerPawn->StartAttacking()")));
 		return;
 	}
-
-	//AttackInfo.AttackMontage->noti
 
 	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
 	ActionState = EActionState::ATTACKING;
@@ -337,7 +343,5 @@ void APlayerPawn::StartAttacking()
 
 void APlayerPawn::StartRunning()
 {
-
-
 	ActionState = EActionState::RUNNING;
 }

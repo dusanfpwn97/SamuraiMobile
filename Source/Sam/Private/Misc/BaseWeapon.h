@@ -44,8 +44,9 @@ protected:
 
 	TArray<AActor*> CollidedActors;
 
-
 	bool ShouldCheck;
+
+	
 
 public:	
 
@@ -59,4 +60,6 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	FTimerHandle CheckCollitionTH;
+
+	AActor* Owner;
 };

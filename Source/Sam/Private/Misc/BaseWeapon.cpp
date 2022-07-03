@@ -100,7 +100,7 @@ void ABaseWeapon::StartCheckingCollision()
 }
 
 void ABaseWeapon::CheckCollision()
-{
+{/*
 	TArray<UPrimitiveComponent*> Comps;
 	Mesh->GetOverlappingComponents(Comps);
 
@@ -121,8 +121,8 @@ void ABaseWeapon::CheckCollision()
 			}
 		}
 	}
-
-	/*
+	
+	*/
 	TArray<AActor*> Actors;
 	Mesh->GetOverlappingActors(Actors, AEnemyBase::StaticClass());
 	
@@ -134,12 +134,22 @@ void ABaseWeapon::CheckCollision()
 		{
 			ICombatInterface* TempInterface = Cast<ICombatInterface>(Act);
 			if (!TempInterface) return;
-			TempInterface->OnWeaponCollided(Act, "None");
+			TempInterface->OnWeaponHit(Act, "None");
 			CollidedActors.AddUnique(Act);
+			
+			if (Owner)
+			{
+				if (Owner->GetClass()->ImplementsInterface(UCombatInterface::StaticClass()))
+				{
+					ICombatInterface* TempInterface2 = Cast<ICombatInterface>(Owner);
+					if (!TempInterface2) return;
+					TempInterface2->OnWeaponHitEnemy(Act, "None");
+				}
+			}
+
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("COLLISONSDWDQWDQWDWQ")));
 		}
 	}
-	*/
 }
 
 void ABaseWeapon::StopCheckingCollision()

@@ -41,7 +41,7 @@ protected:
 
 	void ActivateRagdoll();
 
-	virtual void OnWeaponCollided(AActor* Actor, FName Bone) override;
+	virtual void OnWeaponHit(AActor* Actor, FName Bone) override;
 
 public:	
 	// Called every frame

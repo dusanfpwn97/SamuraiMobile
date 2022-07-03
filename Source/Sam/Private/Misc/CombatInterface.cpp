@@ -5,7 +5,11 @@
 
 // Add default functionality here for any ICombatInterface functions that are not pure virtual.
 
-void ICombatInterface::OnWeaponCollided(AActor* Actor, FName Bone)
+void ICombatInterface::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 {
 	return;
+}
+
+void ICombatInterface::OnWeaponHit(AActor* Actor, FName Bone)
+{
 }

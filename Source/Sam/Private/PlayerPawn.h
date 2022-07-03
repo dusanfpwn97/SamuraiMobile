@@ -11,8 +11,6 @@ class ABaseWeapon;
 class UAnimMontage;
 class UCurveFloat;
 
-
-
 UENUM(BlueprintType)
 enum class EActionState : uint8
 {
@@ -40,7 +38,6 @@ struct FAttackInfo
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		UCurveFloat* StartDashSpeedCurve;
 
-
 };
 
 UCLASS(config=Game)
@@ -59,7 +56,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool IsInDamageWindow = false;
 
-
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return TargetArm; }
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
@@ -68,11 +64,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void OnDamageNotifyEnded();
 
-
 protected:
 
 	virtual void BeginPlay() override;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class USpringArmComponent* TargetArm;
@@ -113,9 +107,7 @@ protected:
 
 	FTimerHandle ScheduleNextActionTH;
 
-
-
-	virtual void OnWeaponCollided(AActor* Actor, FName Bone) override;
+	virtual void OnWeaponHitEnemy(AActor* Actor, FName Bone) override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector LastDirection;
@@ -125,8 +117,7 @@ protected:
 	FAttackInfo AttackInfo;
 
 	float DashDeltaAccumulated;
-
-
+	float AttackSlowMoDeltaAccumulated;
 
 };
 
