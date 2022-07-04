@@ -146,8 +146,6 @@ void ABaseWeapon::CheckCollision()
 					TempInterface2->OnWeaponHitEnemy(Act, "None");
 				}
 			}
-
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("COLLISONSDWDQWDQWDWQ")));
 		}
 	}
 }

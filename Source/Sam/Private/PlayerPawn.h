@@ -82,14 +82,20 @@ protected:
 	AActor* CurrentTarget;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	ABaseWeapon* CurrentWeapon;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		TSubclassOf<class ASlashIndicator> SlashIndicatorClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 		UCurveFloat* DashSpeedCurve;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
+		UCurveFloat* HitSlowMoCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 		float RunSpeed = 700.f;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 		float PrepareToAttackSpeed = 50.f;
 
+
+	void HitSlowMoLoop();
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		float CurrentSpeed = 700.f;
 
@@ -104,6 +110,10 @@ protected:
 	void StartAttacking();
 	void StartRunning();
 	void ContinueDashing();
+	void PrepareForAttack();
+	void CheckActionStates();
+
+	AActor* CurrentPrepareForAttackTarget;
 
 	FTimerHandle ScheduleNextActionTH;
 
@@ -118,6 +128,8 @@ protected:
 
 	float DashDeltaAccumulated;
 	float AttackSlowMoDeltaAccumulated;
+	float CurrentHitSlowMoTimeAccumulated = -1;
+
 
 };
 

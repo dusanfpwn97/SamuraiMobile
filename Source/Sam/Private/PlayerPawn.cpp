@@ -16,6 +16,7 @@
 #include "Misc/BaseWeapon.h"
 #include "Animation/AnimMontage.h"
 #include "Curves/CurveFloat.h"
+#include "Misc/SlashIndicator.h"
 
 
 APlayerPawn::APlayerPawn()
@@ -44,6 +45,27 @@ void APlayerPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCo
 	// handle touch devices
 	PlayerInputComponent->BindTouch(IE_Pressed,  this, &APlayerPawn::TouchStarted);
 	PlayerInputComponent->BindTouch(IE_Released, this, &APlayerPawn::TouchStopped);
+}
+
+void APlayerPawn::HitSlowMoLoop()
+{
+	UWorld* World = GetWorld();
+	if (!CurrentTarget || !World) return;
+
+	if (ActionState != EActionState::ATTACKING && ActionState != EActionState::PREPARING_FOR_ATTACK) return;
+	if (CurrentHitSlowMoTimeAccumulated < 0.f) return;
+
+	float MinTime, MaxTime;
+	HitSlowMoCurve->GetTimeRange(MinTime, MaxTime);
+	CurrentHitSlowMoTimeAccumulated += World->DeltaRealTimeSeconds;
+
+	float TempSlowMoVal = HitSlowMoCurve->GetFloatValue(CurrentHitSlowMoTimeAccumulated);
+	CustomTimeDilation = TempSlowMoVal;
+
+	if (CurrentHitSlowMoTimeAccumulated > MaxTime)
+	{
+		CurrentHitSlowMoTimeAccumulated = -1;
+	}
 }
 
 void APlayerPawn::MoveTowardsTarget()
@@ -101,6 +123,7 @@ void APlayerPawn::MoveTowardsTarget()
 
 void APlayerPawn::SetNextTarget()
 {
+	if (ActionState == EActionState::ATTACKING || ActionState == EActionState::PREPARING_FOR_ATTACK) return;
 	UWorld* World = GetWorld();
 	if (!World) return;
 	ASamGameMode* SamGM = (ASamGameMode*)UGameplayStatics::GetGameMode(World);
@@ -132,7 +155,10 @@ void APlayerPawn::SetNextTarget()
 
 void APlayerPawn::UpdateRotation()
 {
+	//if (ActionState == EActionState::ATTACKING || ActionState == EActionState::PREPARING_FOR_ATTACK) return;
+
 	SetActorRotation(LastDirection.Rotation());
+
 }
 
 void APlayerPawn::UpdateSpeed()
@@ -142,16 +168,8 @@ void APlayerPawn::UpdateSpeed()
 
 	if (ActionState == EActionState::RUNNING)
 	{
-		if (FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) > AttackInfo.DistanceForSlowdown)
-		{
-			CurrentSpeed = RunSpeed;
-			return;
-		}
-		else
-		{
-			CurrentSpeed = PrepareToAttackSpeed;
-			return;
-		}
+		CurrentSpeed = RunSpeed;
+		return;
 	}
 	else if (ActionState == EActionState::DASHING)
 	{
@@ -160,17 +178,10 @@ void APlayerPawn::UpdateSpeed()
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
 			return;
 		}
-		else if(FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) < AttackInfo.DistanceForSlowdown)
-		{
-			CurrentSpeed = PrepareToAttackSpeed;
-			return;
-		}
-		else
-		{
-			CurrentSpeed = DashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
-			DashDeltaAccumulated += World->DeltaRealTimeSeconds;
-			
-		}
+
+		CurrentSpeed = DashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
+		DashDeltaAccumulated += World->DeltaRealTimeSeconds;
+		return;
 	}
 	else if (ActionState == EActionState::STARTING_DASH)
 	{
@@ -183,6 +194,7 @@ void APlayerPawn::UpdateSpeed()
 		{
 			CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashDeltaAccumulated) * RunSpeed;
 			DashDeltaAccumulated += World->DeltaRealTimeSeconds;
+			return;
 		}
 	}
 	else if(ActionState == EActionState::ATTACKING || ActionState == EActionState::NOT_MOVING)
@@ -213,23 +225,20 @@ void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	CheckActionStates();
+
 	UpdateSpeed();
-
 	MoveTowardsTarget();
-
 	UpdateRotation();
-
-
+	HitSlowMoLoop();
 }
 
-// Called when the game starts or when spawned
 void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
 	ActionState = EActionState::RUNNING;
 }
-
 
 void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 {
@@ -257,9 +266,9 @@ void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 
 	Wep->AttachToComponent(GetMesh(), Rules, FName("Katana_r"));
 	CurrentWeapon = Wep;
+
+	Wep->Owner = this;
 }
-
-
 
 void APlayerPawn::StartDashing()
 {
@@ -294,9 +303,75 @@ void APlayerPawn::ContinueDashing()
 	DashDeltaAccumulated = 0.f;
 }
 
+void APlayerPawn::PrepareForAttack()
+{
+	UWorld* World = GetWorld();
+	if (!World || ActionState != EActionState::PREPARING_FOR_ATTACK || !CurrentTarget) return;
+
+	// Temp
+	if (FVector::Dist(CurrentTarget->GetActorLocation(), GetActorLocation()) > AttackInfo.DistanceForSlowdown) return;
+
+	if (CurrentPrepareForAttackTarget == CurrentTarget) return;
+
+	CurrentPrepareForAttackTarget = CurrentTarget;
+
+	CustomTimeDilation = 0.01;
+
+	FTransform Transform;
+	Transform.SetScale3D(FVector(1.f, 1.f, 1.f));
+	Transform.SetLocation(CurrentPrepareForAttackTarget->GetActorLocation() + FVector(0,0,30.f));
+
+	ABaseWeapon* Wep = (ABaseWeapon*)World->SpawnActor<ASlashIndicator>(SlashIndicatorClass, Transform);
+
+	FAttachmentTransformRules Rules = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+
+	//Wep->AttachToActor(CurrentPrepareForAttackTarget, Rules);
+	
+}
+
+void APlayerPawn::CheckActionStates()
+{
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	if (ActionState == EActionState::RUNNING)
+	{
+		if (!CurrentTarget) return;
+		if (FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) < AttackInfo.DistanceForSlowdown)
+		{
+			ActionState = EActionState::PREPARING_FOR_ATTACK;
+			return;
+		}
+	}
+	else if (ActionState == EActionState::DASHING)
+	{
+		if (!CurrentTarget) return;
+		if (FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) < AttackInfo.DistanceForSlowdown)
+		{
+			ActionState = EActionState::PREPARING_FOR_ATTACK;
+			return;
+		}
+	}
+	else if (ActionState == EActionState::STARTING_DASH)
+	{
+		return;
+	}
+	else if (ActionState == EActionState::ATTACKING || ActionState == EActionState::NOT_MOVING)
+	{
+		return;
+	}
+	else if (ActionState == EActionState::PREPARING_FOR_ATTACK)
+	{
+		PrepareForAttack();
+		return;
+	}
+
+}
+
 void APlayerPawn::OnDamageNotifyStarted()
 {
-	if (ActionState != EActionState::ATTACKING || !CurrentWeapon || !CurrentTarget) return;
+	if (/*ActionState != EActionState::ATTACKING || */!CurrentWeapon || !CurrentTarget) return;
 	
 	AEnemyBase* Enemy = (AEnemyBase*)CurrentTarget;
 	if (!Enemy) return;
@@ -306,7 +381,7 @@ void APlayerPawn::OnDamageNotifyStarted()
 	CurrentWeapon->StartCheckingCollision();
 
 	//GetMesh()->SetPlayRate(0.01);
-	CustomTimeDilation = 0.1;
+	CustomTimeDilation = 0.5;
 
 }
 
@@ -320,6 +395,10 @@ void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 {
 	// TODO this will cause problems for multiple enemies
 	CurrentWeapon->StopCheckingCollision();
+	CurrentHitSlowMoTimeAccumulated = 0.0001;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Enemy Hit")));
+	CurrentTarget = nullptr;
 	//CustomTimeDilation = 1;
 }
 
@@ -331,13 +410,13 @@ void APlayerPawn::StartAttacking()
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Attack cannot be started. Something is null. PlayerPawn->StartAttacking()")));
 		return;
 	}
-
+	CustomTimeDilation = 1;
 	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
 	ActionState = EActionState::ATTACKING;
 
 	float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
 
-	World->GetTimerManager().SetTimer(ScheduleNextActionTH, this, &APlayerPawn::StartRunning, MontageDuration, false);
+	World->GetTimerManager().SetTimer(ScheduleNextActionTH, this, &APlayerPawn::StartRunning, MontageDuration * 1.3, false);
 
 }
 
