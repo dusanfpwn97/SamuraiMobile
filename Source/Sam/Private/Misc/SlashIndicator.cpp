@@ -2,7 +2,7 @@
 
 
 #include "Misc/SlashIndicator.h"
-#include "Components/WidgetComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 
 // Sets default values
@@ -13,10 +13,10 @@ ASlashIndicator::ASlashIndicator()
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = Root;
 	
-	GoalIndicator = CreateDefaultSubobject<UWidgetComponent>(TEXT("Goal"));
-	GoalIndicator->SetupAttachment(Root);
-	MovingIndicator = CreateDefaultSubobject<UWidgetComponent>(TEXT("Moving"));
-	MovingIndicator->SetupAttachment(Root);
+	Goal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Goal"));
+	Goal->SetupAttachment(Root);
+	Moving = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Moving"));
+	Moving->SetupAttachment(Root);
 }
 
 // Called when the game starts or when spawned

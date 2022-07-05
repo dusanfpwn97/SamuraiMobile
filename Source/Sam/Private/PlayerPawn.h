@@ -10,6 +10,7 @@
 class ABaseWeapon;
 class UAnimMontage;
 class UCurveFloat;
+class UCurveVector;
 
 UENUM(BlueprintType)
 enum class EActionState : uint8
@@ -38,6 +39,12 @@ struct FAttackInfo
 		UAnimMontage* AttackMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		UCurveFloat* StartDashSpeedCurve;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		UCurveFloat* CameraZoomCurve;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		UCurveVector* CameraLocationCurve;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		UCurveVector* CameraRotationCurve;
 
 };
 
@@ -97,6 +104,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 		float PrepareToAttackSpeed = 50.f;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		float StartingSpringArmLength;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		FVector StartingSpringOffset;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		FRotator StartingSpringArmRot;
+	void SetStartingValues();
 
 	void HitSlowMoLoop();
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -113,7 +127,14 @@ protected:
 	void StartAttacking();
 	void StartRunning();
 	void ContinueDashing();
-	void PrepareForAttack();
+	void CheckPrepareToAttack();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void PrepareToAttack();
+
+	UFUNCTION(BlueprintImplementableEvent)
+		void OnAttackEnded();
+
 
 	void CheckActionStates();
 
@@ -130,13 +151,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FAttackInfo AttackInfo;
 
-	float DashDeltaAccumulated;
-	float AttackSlowMoDeltaAccumulated;
-	float CurrentHitSlowMoTimeAccumulated = -1;
-	float StartRunningAccumulated = -1;
+	float DashAccumulatedTime = -1;
+	float CurrentHitSlowMoAccumulatedTime = -1;
+	float StartRunningAccumulatedTime = -1;
+	float CameraControlAccumulatedTime = -1;
 	void CheckStartRunningAfterAttack();
 	
-
+	void ControlCamera();
+	bool IsDashing();
 
 };
 

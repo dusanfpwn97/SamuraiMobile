@@ -19,9 +19,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class USceneComponent* Root;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UWidgetComponent* GoalIndicator;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		class UWidgetComponent* MovingIndicator;
+		class UStaticMeshComponent* Goal;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UStaticMeshComponent* Moving;
 
 protected:
 	// Called when the game starts or when spawned
