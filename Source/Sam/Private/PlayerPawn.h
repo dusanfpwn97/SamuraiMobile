@@ -17,8 +17,9 @@ enum class EActionState : uint8
 	NOT_MOVING,
 	STARTING_DASH,
 	DASHING,
+	PREPARING_TO_ATTACK,
 	ATTACKING,
-	PREPARING_FOR_ATTACK,
+	ATTACKING_HIT,
 	RUNNING
 };
 
@@ -63,6 +64,8 @@ public:
 		void OnDamageNotifyStarted();
 	UFUNCTION(BlueprintCallable)
 		void OnDamageNotifyEnded();
+	UFUNCTION(BlueprintCallable)
+		bool IsAttacking();
 
 protected:
 
@@ -111,9 +114,10 @@ protected:
 	void StartRunning();
 	void ContinueDashing();
 	void PrepareForAttack();
+
 	void CheckActionStates();
 
-	AActor* CurrentPrepareForAttackTarget;
+	AActor* PrepareForAttackTarget;
 
 	FTimerHandle ScheduleNextActionTH;
 
@@ -129,6 +133,9 @@ protected:
 	float DashDeltaAccumulated;
 	float AttackSlowMoDeltaAccumulated;
 	float CurrentHitSlowMoTimeAccumulated = -1;
+	float StartRunningAccumulated = -1;
+	void CheckStartRunningAfterAttack();
+	
 
 
 };

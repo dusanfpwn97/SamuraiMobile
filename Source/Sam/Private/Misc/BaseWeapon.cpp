@@ -31,8 +31,6 @@ ABaseWeapon::ABaseWeapon()
 	CollisionPoint5->SetupAttachment(Mesh);
 	CollisionPoint6->SetupAttachment(Mesh);
 
-
-
 }
 
 void ABaseWeapon::Activate()
