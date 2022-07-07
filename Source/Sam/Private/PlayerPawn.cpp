@@ -27,7 +27,7 @@ APlayerPawn::APlayerPawn()
 	RootComponent = GetCapsuleComponent();
 	
 	TargetArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	TargetArm->SetupAttachment(GetMesh());
+	TargetArm->SetupAttachment(RootComponent);
 	TargetArm->TargetArmLength = 400.0f; // The camera follows at this distance behind the character	
 	TargetArm->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
@@ -50,30 +50,12 @@ void APlayerPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCo
 
 void APlayerPawn::SetStartingValues()
 {
-	ActionState = EActionState::RUNNING;
 	StartingSpringArmLength = TargetArm->TargetArmLength;
 	StartingSpringOffset = TargetArm->SocketOffset;
 	StartingSpringArmRot = TargetArm->GetComponentRotation();
-}
 
-void APlayerPawn::HitSlowMoLoop()
-{
-	UWorld* World = GetWorld(); if (!World) return;
-
-	if (ActionState != EActionState::ATTACKING_HIT) return;
-	//if (CurrentHitSlowMoTimeAccumulated < 0.f) return;
-
-	float MinTime, MaxTime;
-	HitSlowMoCurve->GetTimeRange(MinTime, MaxTime);
-	CurrentHitSlowMoAccumulatedTime += World->DeltaRealTimeSeconds;
-
-	float TempSlowMoVal = HitSlowMoCurve->GetFloatValue(CurrentHitSlowMoAccumulatedTime);
-	CustomTimeDilation = TempSlowMoVal;
-
-	if (CurrentHitSlowMoAccumulatedTime > MaxTime)
-	{
-		ActionState = EActionState::ATTACKING;
-	}
+	StartRunning();
+	
 }
 
 void APlayerPawn::MoveTowardsTarget()
@@ -169,79 +151,29 @@ void APlayerPawn::UpdateRotation()
 
 }
 
-void APlayerPawn::UpdateSpeed()
-{
-	UWorld* World = GetWorld();
-	if (!CurrentTarget || !World) return;
-
-	if (ActionState == EActionState::RUNNING)
-	{
-		CurrentSpeed = RunSpeed;
-		return;
-	}
-	else if (ActionState == EActionState::DASHING)
-	{
-		if (!DashSpeedCurve)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
-			return;
-		}
-
-		CurrentSpeed = DashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
-		DashAccumulatedTime += World->DeltaRealTimeSeconds;
-		return;
-	}
-	else if (ActionState == EActionState::STARTING_DASH)
-	{
-		if (!AttackInfo.StartDashSpeedCurve)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
-			return;
-		}
-		else
-		{
-			CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
-			DashAccumulatedTime += World->DeltaRealTimeSeconds;
-			return;
-		}
-	}
-	else if(IsAttacking() || ActionState == EActionState::NOT_MOVING)
-	{
-		CurrentSpeed = 0;
-		return;
-	}
-	else if(ActionState == EActionState::PREPARING_TO_ATTACK)
-	{
-		CurrentSpeed = PrepareToAttackSpeed;
-		return;
-	}
-
-}
-
 void APlayerPawn::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
 
-	StartDashing();
+	StartStartingDash();
 }
 
 void APlayerPawn::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
-	StartAttacking();
+	StartAttacking(true);
 }
 
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	CheckActionStates();
 
-	UpdateSpeed();
 	MoveTowardsTarget();
 	UpdateRotation();
-	HitSlowMoLoop();
-	CheckStartRunningAfterAttack();
+
+	DoLoops();
+
 	CheckPrepareToAttack();
-	ControlCamera();
+	CameraAttackMovementLoop();
 
 }
 
@@ -283,104 +215,19 @@ void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 	Wep->Owner = this;
 }
 
-void APlayerPawn::StartDashing()
-{
-	UWorld* World = GetWorld();
-	if (!AttackInfo.StartDashSpeedCurve || !World || !AttackInfo.StartDashMontage)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Dash cannot be started. Something is null. PlayerPawn->StartDashing()")));
-		return;
-	}
-
-	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
-
-	ActionState = EActionState::STARTING_DASH;
-	DashAccumulatedTime = 0.f;
-
-	float MontageDuration = PlayAnimMontage(AttackInfo.StartDashMontage);
-
-	float MinTime, MaxTime;
-	AttackInfo.StartDashSpeedCurve->GetTimeRange(MinTime, MaxTime);
-
-	World->GetTimerManager().SetTimer(ScheduleNextActionTH, this, &APlayerPawn::ContinueDashing, MaxTime, false);
-
-}
-
-void APlayerPawn::ContinueDashing()
-{
-	UWorld* World = GetWorld();
-	if (!World) return;
-
-	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
-	ActionState = EActionState::DASHING;
-	DashAccumulatedTime = 0.f;
-}
 
 void APlayerPawn::CheckPrepareToAttack()
 {
 	if (ActionState == EActionState::PREPARING_TO_ATTACK/* || !IsDashing()*/) return;
-
-
 
 	if (!CurrentTarget) return;
 	if (PrepareForAttackTarget == CurrentTarget) return;
 
 	if (FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) > AttackInfo.DistanceForSlowdown) return;
 
-	PrepareToAttack();
+	StartPreparingToAttack();
 }
 
-void APlayerPawn::PrepareToAttack_Implementation()
-{
-	UWorld* World = GetWorld(); if (!World) return;
-
-
-	ActionState = EActionState::PREPARING_TO_ATTACK;
-	PrepareForAttackTarget = CurrentTarget;
-
-	//CustomTimeDilation = 0.01;
-
-	FTransform Transform;
-	Transform.SetScale3D(FVector(1.f, 1.f, 1.f));
-	Transform.SetLocation(PrepareForAttackTarget->GetActorLocation() + FVector(0, 0, 30.f));
-
-	ASlashIndicator* Indicator = (ASlashIndicator*)World->SpawnActor<ASlashIndicator>(SlashIndicatorClass, Transform);
-
-	//FAttachmentTransformRules Rules = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
-
-	//Wep->AttachToActor(CurrentPrepareForAttackTarget, Rules);
-}
-
-
-void APlayerPawn::CheckActionStates()
-{
-
-	//UWorld* World = GetWorld();
-	//if (!World) return;
-	//
-	//if (ActionState == EActionState::RUNNING || ActionState == EActionState::DASHING)
-	//{
-	//
-	//}
-	//else if (ActionState == EActionState::DASHING)
-	//{
-	//	
-	//}
-	//else if (ActionState == EActionState::STARTING_DASH)
-	//{
-	//	return;
-	//}
-	//else if (ActionState == EActionState::ATTACKING || ActionState == EActionState::NOT_MOVING)
-	//{
-	//	return;
-	//}
-	////else if (ActionState == EActionState::PREPARING_FOR_ATTACK)
-	////{
-	////	PrepareForAttack();
-	////	return;
-	////}
-
-}
 
 void APlayerPawn::OnDamageNotifyStarted()
 {
@@ -400,7 +247,8 @@ void APlayerPawn::OnDamageNotifyStarted()
 
 void APlayerPawn::OnDamageNotifyEnded()
 {
-	CurrentWeapon->StopCheckingCollision();
+	if (CurrentWeapon) CurrentWeapon->StopCheckingCollision();
+
 	CustomTimeDilation = 1;
 }
 
@@ -418,87 +266,239 @@ bool APlayerPawn::IsAttacking()
 
 void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 {
-	// TODO this will cause problems for multiple enemies
-	CurrentWeapon->StopCheckingCollision();
-	CurrentHitSlowMoAccumulatedTime = 0.0001;
 
 	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Enemy Hit")));
+	
+	// TODO this will cause problems for multiple enemies
+	CurrentWeapon->StopCheckingCollision();
 	CurrentTarget = nullptr;
 
-	ActionState = EActionState::ATTACKING_HIT;
+	StartAttackingHit();
 	//CustomTimeDilation = 1;
 }
 
-void APlayerPawn::CheckStartRunningAfterAttack()
+void APlayerPawn::StartCameraAttackMovement(ECameraMovement CamMovement)
 {
-	if (!IsAttacking() || StartRunningAccumulatedTime < 0) return;
-	UWorld* World = GetWorld(); if (!World) return;
-	float MontageDuration = AttackInfo.AttackMontage->GetPlayLength();
-	
-	//const int32 CurrentFrame = AttackInfo.AttackMontage->GetFrameAtTime(StartRunningAccumulated);
-	//const float CurrentTime = AttackInfo.AttackMontage->GetTimeAtFrame(CurrentFrame);
-
-	if (StartRunningAccumulatedTime >= MontageDuration)
-	{
-		OnAttackEnded();
-		StartRunning();
-		StartRunningAccumulatedTime = -1;
-	}
-	StartRunningAccumulatedTime += World->DeltaTimeSeconds * CustomTimeDilation;
-
-}
-
-void APlayerPawn::ControlCamera()
-{
-	if (!IsAttacking() && ActionState != EActionState::PREPARING_TO_ATTACK)
+	CameraMovement = CamMovement;
+	TargetArm->CameraLagSpeed = 30.f;
+	TargetArm->CameraRotationLagSpeed = 30.f;
+	if (CamMovement == ECameraMovement::FORWARD)
 	{
 		CameraControlAccumulatedTime = 0;
-		return;
 	}
+}
+
+void APlayerPawn::CameraAttackMovementLoop()
+{
+	if(CameraMovement == ECameraMovement::NOT_MOVING) return;
+
 	UWorld* World = GetWorld(); if (!World) return;
 	if (!AttackInfo.CameraZoomCurve || !AttackInfo.CameraRotationCurve || !AttackInfo.CameraLocationCurve) return;
 	
 	TArray<float> MaxTimes;
 	float ZoomMinTime, ZoomMaxTime, RotMinTime, RotMaxTime, LocMinTime, LocMaxTime, MaxTime;
+	float NewZoomVal;
+	ZoomMinTime = ZoomMaxTime = RotMinTime = RotMinTime = RotMaxTime = LocMinTime = LocMaxTime = MaxTime = NewZoomVal = 0;
 	
-	AttackInfo.CameraZoomCurve->GetTimeRange(ZoomMinTime, ZoomMaxTime);
-	AttackInfo.CameraRotationCurve->GetTimeRange(RotMinTime, RotMaxTime);
-	AttackInfo.CameraLocationCurve->GetTimeRange(LocMinTime, LocMaxTime);
+	FVector NewRotOffset	  = FVector::ZeroVector;
+	FVector NewSocketOffset = FVector::ZeroVector;
+
+	if (AttackInfo.CameraZoomCurve)
+	{
+		AttackInfo.CameraZoomCurve->GetTimeRange(ZoomMinTime, ZoomMaxTime);
+		NewZoomVal = AttackInfo.CameraZoomCurve->GetFloatValue(CameraControlAccumulatedTime);
+	}
+	if (AttackInfo.CameraRotationCurve)
+	{
+		AttackInfo.CameraRotationCurve->GetTimeRange(RotMinTime, RotMaxTime);
+		NewRotOffset = AttackInfo.CameraRotationCurve->GetVectorValue(CameraControlAccumulatedTime);
+	}
+	if (AttackInfo.CameraLocationCurve)
+	{
+		AttackInfo.CameraLocationCurve->GetTimeRange(LocMinTime, LocMaxTime);
+		NewSocketOffset = AttackInfo.CameraLocationCurve->GetVectorValue(CameraControlAccumulatedTime);
+	}
+
 	MaxTime = FMath::Max(ZoomMaxTime, RotMaxTime);
 	MaxTime = FMath::Max(MaxTime, LocMaxTime);
 
-
-	CameraControlAccumulatedTime += World->DeltaRealTimeSeconds;
-
-	if (CameraControlAccumulatedTime > MaxTime)
+	if (CameraMovement == ECameraMovement::FORWARD)
 	{
-
+		if (CameraControlAccumulatedTime > MaxTime)
+		{
+			StopCameraAttackMovement();
+			return;
+		}
+		else
+		{
+			CameraControlAccumulatedTime += World->DeltaRealTimeSeconds;
+		}
+	}
+	else if (CameraMovement == ECameraMovement::BACKWARD)
+	{
+		if (CameraControlAccumulatedTime < 0)
+		{
+			StopCameraAttackMovement();
+			return;
+		}
+		else
+		{
+			CameraControlAccumulatedTime -= World->DeltaRealTimeSeconds;
+		}
+	}
+	else
+	{
+		StopCameraAttackMovement();
 		return;
 	}
 
-	float ZoomVal     = AttackInfo.CameraZoomCurve->GetFloatValue(CameraControlAccumulatedTime);
-	FVector SocketVal = AttackInfo.CameraRotationCurve->GetVectorValue(CameraControlAccumulatedTime);
-	FVector RotVal    = AttackInfo.CameraLocationCurve->GetVectorValue(CameraControlAccumulatedTime);
+	TargetArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
+	TargetArm->SocketOffset = StartingSpringOffset + NewSocketOffset;
 
-	//const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
-	TargetArm->TargetArmLength = ZoomVal;
+	FRotator Rot;
+	Rot.Roll = NewRotOffset.X;
+	Rot.Pitch = NewRotOffset.Y;
+	Rot.Yaw = NewRotOffset.Z;
 
+	const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
 
+	//TargetArm->SetRelativeRotation(FMath::Lerp(StartingSpringArmRot, Rot + StartingSpringArmRot, Alpha));
+	TargetArm->SetRelativeRotation(Rot + StartingSpringArmRot);
 
+	
+
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(World->DeltaRealTimeSeconds)));
 }
 
-bool APlayerPawn::IsDashing()
+void APlayerPawn::StopCameraAttackMovement()
+{
+	CameraMovement = ECameraMovement::NOT_MOVING;
+	TargetArm->CameraLagSpeed = 6.f;
+	TargetArm->CameraRotationLagSpeed = 6.f;
+}
+
+void APlayerPawn::DoLoops()
+{
+	if (ActionState == EActionState::STARTING_DASH)
+	{
+		StartingDashLoop();
+		return;
+	}
+	else if (ActionState == EActionState::DASHING)
+	{
+		DashingLoop();
+		return;
+	}
+	else if (ActionState == EActionState::PREPARING_TO_ATTACK)
+	{
+		PreparingToAttackLoop();
+		return;
+	}
+	else if (ActionState == EActionState::ATTACKING)
+	{
+		AttackingLoop();
+		return;
+	}
+	else if (ActionState == EActionState::ATTACKING_HIT)
+	{
+		AttackingHitLoop();
+		return;
+	}
+	else if (ActionState == EActionState::RUNNING)
+	{
+		RunningLoop();
+		return;
+	}
+}
+
+void APlayerPawn::StartStartingDash()
 {
 
-	if (ActionState == EActionState::DASHING || ActionState == EActionState::STARTING_DASH)
+	if (!AttackInfo.StartDashSpeedCurve || !AttackInfo.StartDashMontage)
 	{
-		return true;
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Starting Dash cannot be started. Something is not set. PlayerPawn->StartDashing()")));
+		return;
 	}
 
-	return false;
+	ActionState = EActionState::STARTING_DASH;
+	DashAccumulatedTime = 0.f;
+
+	float MontageDuration = PlayAnimMontage(AttackInfo.StartDashMontage);
+
+	//float MinTime, MaxTime;
+	//AttackInfo.StartDashSpeedCurve->GetTimeRange(MinTime, MaxTime);
+
 }
 
-void APlayerPawn::StartAttacking()
+void APlayerPawn::StartingDashLoop()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	if (!AttackInfo.StartDashSpeedCurve) return;
+
+	float MinTime, MaxTime;
+	AttackInfo.StartDashSpeedCurve->GetTimeRange(MinTime, MaxTime);
+
+
+	CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
+	DashAccumulatedTime += World->DeltaRealTimeSeconds;
+
+	if (DashAccumulatedTime > MaxTime)
+	{
+		StartDashing();
+	}
+}
+
+void APlayerPawn::StartDashing()
+{
+
+	ActionState = EActionState::DASHING;
+	DashAccumulatedTime = 0.f;
+
+}
+
+void APlayerPawn::DashingLoop()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	if (ActionState != EActionState::DASHING) return;
+
+	if (!DashSpeedCurve)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Trying to dash but StartDashSpeedCurve is null")));
+		return;
+	}
+
+	CurrentSpeed = DashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
+	DashAccumulatedTime += World->DeltaRealTimeSeconds;
+}
+
+void APlayerPawn::StartPreparingToAttack()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	ActionState = EActionState::PREPARING_TO_ATTACK;
+	PrepareForAttackTarget = CurrentTarget;
+
+	CustomTimeDilation = 0.1;
+
+	FTransform Transform;
+	Transform.SetScale3D(FVector(1.f, 1.f, 1.f));
+	Transform.SetLocation(PrepareForAttackTarget->GetActorLocation() + FVector(0, 0, 30.f));
+
+	ASlashIndicator* Indicator = (ASlashIndicator*)World->SpawnActor<ASlashIndicator>(SlashIndicatorClass, Transform);
+
+
+	StartCameraAttackMovement(ECameraMovement::FORWARD);
+	//FAttachmentTransformRules Rules = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
+
+	//Wep->AttachToActor(CurrentPrepareForAttackTarget, Rules);
+}
+
+void APlayerPawn::PreparingToAttackLoop()
+{
+	if (ActionState != EActionState::PREPARING_TO_ATTACK) return;
+	CurrentSpeed = PrepareToAttackSpeed;
+}
+
+void APlayerPawn::StartAttacking(bool Reset)
 {
 	UWorld* World = GetWorld();
 	if (!World || !AttackInfo.AttackMontage)
@@ -506,25 +506,122 @@ void APlayerPawn::StartAttacking()
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Attack cannot be started. Something is null. PlayerPawn->StartAttacking()")));
 		return;
 	}
-	CustomTimeDilation = 1;
-	World->GetTimerManager().ClearTimer(ScheduleNextActionTH);
+
 	ActionState = EActionState::ATTACKING;
-	StartRunningAccumulatedTime = 0;
-	float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
-	
+	CustomTimeDilation = 1.f;
+
+
+	if (Reset)
+	{
+		AttackAccumulatedTime = 0.f;
+		float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
+	}
+	else
+	{
+
+	}
+
+
+
+
+	//float MinTime, MaxTime;
+	//HitSlowMoCurve->GetTimeRange(MinTime, MaxTime);
+
+	//MontageDuration *= 1+(1-AttackInfo.AttackMontage->RateScale) + MaxTime;
+
+}
+
+void APlayerPawn::AttackingLoop()
+{
+	if (ActionState != EActionState::ATTACKING) return;
+	CurrentSpeed = 0.f;
+
+
+	AdvanceAttackTime();
+
+}
+void APlayerPawn::AdvanceAttackTime()
+{
+	if (!IsAttacking() || AttackAccumulatedTime < 0) return;
+	UWorld* World = GetWorld(); if (!World) return;
+	float MontageDuration = AttackInfo.AttackMontage->GetPlayLength();
+
+	//const int32 CurrentFrame = AttackInfo.AttackMontage->GetFrameAtTime(StartRunningAccumulated);
+	//const float CurrentTime = AttackInfo.AttackMontage->GetTimeAtFrame(CurrentFrame);
+
+	if (AttackAccumulatedTime >= MontageDuration)
+	{
+		StopAttack();
+	}
+	AttackAccumulatedTime += World->DeltaTimeSeconds * CustomTimeDilation;
+
+}
+
+void APlayerPawn::StopAttack()
+{
+	OnAttackEnded();
+	StartRunning();
+	StartCameraAttackMovement(ECameraMovement::BACKWARD);
+	AttackAccumulatedTime = -1;
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
+}
+
+
+
+void APlayerPawn::StartAttackingHit()
+{
+
+	CurrentHitSlowMoAccumulatedTime = 0.f;
+	ActionState = EActionState::ATTACKING_HIT;
+}
+
+void APlayerPawn::AttackingHitLoop()
+{
+
+	UWorld* World = GetWorld(); if (!World) return;
+	if (ActionState != EActionState::ATTACKING_HIT) return;
+	//if (CurrentHitSlowMoTimeAccumulated < 0.f) return;
 
 	float MinTime, MaxTime;
 	HitSlowMoCurve->GetTimeRange(MinTime, MaxTime);
+	CurrentHitSlowMoAccumulatedTime += World->DeltaRealTimeSeconds;
 
-	//MontageDuration *= 1+(1-AttackInfo.AttackMontage->RateScale) + MaxTime;
-	//World->GetTimerManager().SetTimer(ScheduleNextActionTH, this, &APlayerPawn::StartRunning, MontageDuration, false);
+	float TempSlowMoVal = HitSlowMoCurve->GetFloatValue(CurrentHitSlowMoAccumulatedTime);
+	CustomTimeDilation = TempSlowMoVal;
+
+	CurrentSpeed = 0;
+
+	AdvanceAttackTime();
+
+
+	if (CurrentHitSlowMoAccumulatedTime > MaxTime)
+	{
+		StartAttacking(false);
+	}
+
+
 
 }
 
 void APlayerPawn::StartRunning()
 {
 	ActionState = EActionState::RUNNING;
+	AttackAccumulatedTime = 0;
+}
 
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("StartRunning")));
+void APlayerPawn::RunningLoop()
+{
+	if (ActionState != EActionState::RUNNING) return;
+	CurrentSpeed = RunSpeed;
+}
 
+
+bool APlayerPawn::IsDashing()
+{
+	if (ActionState == EActionState::DASHING || ActionState == EActionState::STARTING_DASH)
+	{
+		return true;
+	}
+
+	return false;
 }
