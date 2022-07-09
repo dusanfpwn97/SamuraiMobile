@@ -18,6 +18,8 @@
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveVector.h"
 #include "Misc/SlashIndicator.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Camera/PlayerCam.h"
 
 
 APlayerPawn::APlayerPawn()
@@ -26,16 +28,7 @@ APlayerPawn::APlayerPawn()
 	GetCapsuleComponent()->SetCapsuleSize(42, 96, false);
 	RootComponent = GetCapsuleComponent();
 	
-	TargetArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	TargetArm->SetupAttachment(RootComponent);
-	TargetArm->TargetArmLength = 400.0f; // The camera follows at this distance behind the character	
-	TargetArm->bUsePawnControlRotation = true; // Rotate the arm based on the controller
-
-	// Create a follow camera
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(TargetArm, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
-
+	
 }
 
 void APlayerPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -50,10 +43,7 @@ void APlayerPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCo
 
 void APlayerPawn::SetStartingValues()
 {
-	StartingSpringArmLength = TargetArm->TargetArmLength;
-	StartingSpringOffset = TargetArm->SocketOffset;
-	StartingSpringArmRot = TargetArm->GetComponentRotation();
-
+	
 	StartRunning();
 	
 }
@@ -151,21 +141,44 @@ void APlayerPawn::UpdateRotation()
 
 }
 
+void APlayerPawn::SpawnCamera()
+{
+	UWorld* World = GetWorld();  if(!World) return;
+	//if (!CameraSoftClass.IsValid()) return;
+	FTransform Transform;
+	Transform.SetLocation(GetActorLocation());
+	Transform.SetRotation(GetActorRotation().Quaternion());
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	CameraSoftClass.LoadSynchronous();
+	UClass* TempCamClass = CameraSoftClass.Get();
+	if (!TempCamClass) return;
+	Camera = (APlayerCam*)World->SpawnActor<APlayerCam>(TempCamClass, Transform, Params);
+	if (!Camera)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT("Could not spawn Camera!!! Should not happen ever")));
+		return;
+	}
+	Camera->SetPlayer(this);
+
+	BP_OnCameraCreated();
+
+}
+
 void APlayerPawn::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
-
 	StartStartingDash();
 }
 
 void APlayerPawn::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
-	StartAttacking(true);
+	StartAttacking();
 }
 
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 
 	MoveTowardsTarget();
 	UpdateRotation();
@@ -173,7 +186,7 @@ void APlayerPawn::Tick(float DeltaTime)
 	DoLoops();
 
 	CheckPrepareToAttack();
-	CameraAttackMovementLoop();
+	
 
 }
 
@@ -181,6 +194,7 @@ void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SpawnCamera();
 	
 	SetStartingValues();
 }
@@ -252,9 +266,11 @@ void APlayerPawn::OnDamageNotifyEnded()
 	CustomTimeDilation = 1;
 }
 
-bool APlayerPawn::IsAttacking()
+const bool APlayerPawn::IsAttacking()
 {
-	if (ActionState == EActionState::ATTACKING || ActionState == EActionState::ATTACKING_HIT)
+	if (ActionState == EActionState::ATTACKING ||
+		ActionState == EActionState::ATTACKING_HIT ||
+		ActionState == EActionState::ENDING_ATTACK)
 	{
 		return true;
 	}
@@ -277,105 +293,6 @@ void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 	//CustomTimeDilation = 1;
 }
 
-void APlayerPawn::StartCameraAttackMovement(ECameraMovement CamMovement)
-{
-	CameraMovement = CamMovement;
-	TargetArm->CameraLagSpeed = 30.f;
-	TargetArm->CameraRotationLagSpeed = 30.f;
-	if (CamMovement == ECameraMovement::FORWARD)
-	{
-		CameraControlAccumulatedTime = 0;
-	}
-}
-
-void APlayerPawn::CameraAttackMovementLoop()
-{
-	if(CameraMovement == ECameraMovement::NOT_MOVING) return;
-
-	UWorld* World = GetWorld(); if (!World) return;
-	if (!AttackInfo.CameraZoomCurve || !AttackInfo.CameraRotationCurve || !AttackInfo.CameraLocationCurve) return;
-	
-	TArray<float> MaxTimes;
-	float ZoomMinTime, ZoomMaxTime, RotMinTime, RotMaxTime, LocMinTime, LocMaxTime, MaxTime;
-	float NewZoomVal;
-	ZoomMinTime = ZoomMaxTime = RotMinTime = RotMinTime = RotMaxTime = LocMinTime = LocMaxTime = MaxTime = NewZoomVal = 0;
-	
-	FVector NewRotOffset	  = FVector::ZeroVector;
-	FVector NewSocketOffset = FVector::ZeroVector;
-
-	if (AttackInfo.CameraZoomCurve)
-	{
-		AttackInfo.CameraZoomCurve->GetTimeRange(ZoomMinTime, ZoomMaxTime);
-		NewZoomVal = AttackInfo.CameraZoomCurve->GetFloatValue(CameraControlAccumulatedTime);
-	}
-	if (AttackInfo.CameraRotationCurve)
-	{
-		AttackInfo.CameraRotationCurve->GetTimeRange(RotMinTime, RotMaxTime);
-		NewRotOffset = AttackInfo.CameraRotationCurve->GetVectorValue(CameraControlAccumulatedTime);
-	}
-	if (AttackInfo.CameraLocationCurve)
-	{
-		AttackInfo.CameraLocationCurve->GetTimeRange(LocMinTime, LocMaxTime);
-		NewSocketOffset = AttackInfo.CameraLocationCurve->GetVectorValue(CameraControlAccumulatedTime);
-	}
-
-	MaxTime = FMath::Max(ZoomMaxTime, RotMaxTime);
-	MaxTime = FMath::Max(MaxTime, LocMaxTime);
-
-	if (CameraMovement == ECameraMovement::FORWARD)
-	{
-		if (CameraControlAccumulatedTime > MaxTime)
-		{
-			StopCameraAttackMovement();
-			return;
-		}
-		else
-		{
-			CameraControlAccumulatedTime += World->DeltaRealTimeSeconds;
-		}
-	}
-	else if (CameraMovement == ECameraMovement::BACKWARD)
-	{
-		if (CameraControlAccumulatedTime < 0)
-		{
-			StopCameraAttackMovement();
-			return;
-		}
-		else
-		{
-			CameraControlAccumulatedTime -= World->DeltaRealTimeSeconds;
-		}
-	}
-	else
-	{
-		StopCameraAttackMovement();
-		return;
-	}
-
-	TargetArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
-	TargetArm->SocketOffset = StartingSpringOffset + NewSocketOffset;
-
-	FRotator Rot;
-	Rot.Roll = NewRotOffset.X;
-	Rot.Pitch = NewRotOffset.Y;
-	Rot.Yaw = NewRotOffset.Z;
-
-	const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
-
-	//TargetArm->SetRelativeRotation(FMath::Lerp(StartingSpringArmRot, Rot + StartingSpringArmRot, Alpha));
-	TargetArm->SetRelativeRotation(Rot + StartingSpringArmRot);
-
-	
-
-	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(World->DeltaRealTimeSeconds)));
-}
-
-void APlayerPawn::StopCameraAttackMovement()
-{
-	CameraMovement = ECameraMovement::NOT_MOVING;
-	TargetArm->CameraLagSpeed = 6.f;
-	TargetArm->CameraRotationLagSpeed = 6.f;
-}
 
 void APlayerPawn::DoLoops()
 {
@@ -402,6 +319,11 @@ void APlayerPawn::DoLoops()
 	else if (ActionState == EActionState::ATTACKING_HIT)
 	{
 		AttackingHitLoop();
+		return;
+	}
+	else if (ActionState == EActionState::ENDING_ATTACK)
+	{
+		EndingAttackLoop();
 		return;
 	}
 	else if (ActionState == EActionState::RUNNING)
@@ -454,6 +376,7 @@ void APlayerPawn::StartDashing()
 	ActionState = EActionState::DASHING;
 	DashAccumulatedTime = 0.f;
 
+	Camera->StartDash();
 }
 
 void APlayerPawn::DashingLoop()
@@ -484,9 +407,10 @@ void APlayerPawn::StartPreparingToAttack()
 	Transform.SetLocation(PrepareForAttackTarget->GetActorLocation() + FVector(0, 0, 30.f));
 
 	ASlashIndicator* Indicator = (ASlashIndicator*)World->SpawnActor<ASlashIndicator>(SlashIndicatorClass, Transform);
+	
+	Camera->StartPreparingToAttack(true);
 
 
-	StartCameraAttackMovement(ECameraMovement::FORWARD);
 	//FAttachmentTransformRules Rules = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
 
 	//Wep->AttachToActor(CurrentPrepareForAttackTarget, Rules);
@@ -498,7 +422,7 @@ void APlayerPawn::PreparingToAttackLoop()
 	CurrentSpeed = PrepareToAttackSpeed;
 }
 
-void APlayerPawn::StartAttacking(bool Reset)
+void APlayerPawn::StartAttacking()
 {
 	UWorld* World = GetWorld();
 	if (!World || !AttackInfo.AttackMontage)
@@ -510,19 +434,10 @@ void APlayerPawn::StartAttacking(bool Reset)
 	ActionState = EActionState::ATTACKING;
 	CustomTimeDilation = 1.f;
 
-
-	if (Reset)
-	{
-		AttackAccumulatedTime = 0.f;
-		float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
-	}
-	else
-	{
-
-	}
-
-
-
+	AttackAccumulatedTime = 0.f;
+	float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
+	
+	Camera->StartAttacking();
 
 	//float MinTime, MaxTime;
 	//HitSlowMoCurve->GetTimeRange(MinTime, MaxTime);
@@ -551,17 +466,17 @@ void APlayerPawn::AdvanceAttackTime()
 
 	if (AttackAccumulatedTime >= MontageDuration)
 	{
-		StopAttack();
+		StopAttackLoop();
 	}
 	AttackAccumulatedTime += World->DeltaTimeSeconds * CustomTimeDilation;
 
 }
 
-void APlayerPawn::StopAttack()
+void APlayerPawn::StopAttackLoop()
 {
 	OnAttackEnded();
 	StartRunning();
-	StartCameraAttackMovement(ECameraMovement::BACKWARD);
+
 	AttackAccumulatedTime = -1;
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
 }
@@ -571,8 +486,10 @@ void APlayerPawn::StopAttack()
 void APlayerPawn::StartAttackingHit()
 {
 
+
 	CurrentHitSlowMoAccumulatedTime = 0.f;
 	ActionState = EActionState::ATTACKING_HIT;
+	Camera->StartAttackingHit();
 }
 
 void APlayerPawn::AttackingHitLoop()
@@ -593,20 +510,33 @@ void APlayerPawn::AttackingHitLoop()
 
 	AdvanceAttackTime();
 
-
 	if (CurrentHitSlowMoAccumulatedTime > MaxTime)
 	{
-		StartAttacking(false);
+		StartEndingAttack();
 	}
 
+}
 
+void APlayerPawn::StartEndingAttack()
+{
+	ActionState = EActionState::ENDING_ATTACK;
+	CustomTimeDilation = 1.f;
 
+	Camera->StartEndingAttack();
+}
+
+void APlayerPawn::EndingAttackLoop()
+{
+	CurrentSpeed = 0.f;
+	AdvanceAttackTime();
 }
 
 void APlayerPawn::StartRunning()
 {
 	ActionState = EActionState::RUNNING;
 	AttackAccumulatedTime = 0;
+
+	Camera->StartRunning();
 }
 
 void APlayerPawn::RunningLoop()
@@ -615,8 +545,7 @@ void APlayerPawn::RunningLoop()
 	CurrentSpeed = RunSpeed;
 }
 
-
-bool APlayerPawn::IsDashing()
+const bool APlayerPawn::IsDashing()
 {
 	if (ActionState == EActionState::DASHING || ActionState == EActionState::STARTING_DASH)
 	{
@@ -625,3 +554,4 @@ bool APlayerPawn::IsDashing()
 
 	return false;
 }
+

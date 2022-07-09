@@ -7,6 +7,7 @@
 #include "Misc/CombatInterface.h"
 #include "PlayerPawn.generated.h"
 
+
 class ABaseWeapon;
 class UAnimMontage;
 class UCurveFloat;
@@ -21,16 +22,10 @@ enum class EActionState : uint8
 	PREPARING_TO_ATTACK,
 	ATTACKING,
 	ATTACKING_HIT,
+	ENDING_ATTACK,
 	RUNNING
 };
 
-UENUM(BlueprintType)
-enum class ECameraMovement : uint8
-{
-	NOT_MOVING,
-	FORWARD,
-	BACKWARD
-};
 
 USTRUCT(BlueprintType)
 struct FAttackInfo
@@ -67,28 +62,34 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass);
 
-
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return TargetArm; }
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-
 	UFUNCTION(BlueprintCallable)
 	void OnDamageNotifyStarted();
 	UFUNCTION(BlueprintCallable)
 	void OnDamageNotifyEnded();
 	UFUNCTION(BlueprintCallable)
-	bool IsAttacking();
+	const bool IsAttacking();
 	UFUNCTION(BlueprintCallable)
-	bool IsDashing();
+	const bool IsDashing();
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
+		FAttackInfo AttackInfo;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
+		AActor* CurrentTarget;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
+		EActionState ActionState;
 
 protected:
 
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class USpringArmComponent* TargetArm;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UCameraComponent* FollowCamera;
+	class APlayerCam* Camera;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<APlayerCam> CameraSoftClass;
+
+	void SpawnCamera();
+	UFUNCTION(BlueprintImplementableEvent)
+	void BP_OnCameraCreated();
 
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
@@ -108,21 +109,10 @@ protected:
 
 	// Runtime
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
-	float StartingSpringArmLength;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
-	FVector StartingSpringOffset;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
-	FRotator StartingSpringArmRot;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	float CurrentSpeed = 700.f;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	FVector LastDirection;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
-	EActionState ActionState;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
-	FAttackInfo AttackInfo;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
-	AActor* CurrentTarget;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	ABaseWeapon* CurrentWeapon;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
@@ -134,7 +124,6 @@ protected:
 	float DashAccumulatedTime = -1;
 	float CurrentHitSlowMoAccumulatedTime = -1;
 	float AttackAccumulatedTime = -1;
-	float CameraControlAccumulatedTime = -1;
 
 	//
 	void SetStartingValues();
@@ -150,32 +139,28 @@ protected:
 	virtual void OnWeaponHitEnemy(AActor* Actor, FName Bone) override;
 
 
-	ECameraMovement CameraMovement;
-	void CameraAttackMovementLoop();
-	//UFUNCTION(BlueprintImplementableEvent)
-	void StartCameraAttackMovement(ECameraMovement CamMovement);
-	void StopCameraAttackMovement();
+	void AdvanceAttackTime();
 
 	void DoLoops();
+
 	void StartStartingDash();
 	void StartingDashLoop();
-	//void StopStartingToDash();
 
 	void StartDashing();
 	void DashingLoop();
-	//void StopDashing();
 
 	void StartPreparingToAttack();
 	void PreparingToAttackLoop();
-	//void StopPreparingToAttack();
 
-	void StartAttacking(bool Reset);
+	void StartAttacking();
 	void AttackingLoop();
-	void StopAttack();
-	void AdvanceAttackTime();
+	void StopAttackLoop();
 
 	void StartAttackingHit();
 	void AttackingHitLoop();
+
+	void StartEndingAttack();
+	void EndingAttackLoop();
 	
 	void StartRunning();
 	void RunningLoop();
