@@ -51,9 +51,9 @@ protected:
 
 
 	//UPROPERTY(EditAnywhere)
-	//class USceneComponent* SceneComp;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class USpringArmComponent* SpringArm;
+	//	class USceneComponent* SceneComp;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	//	class USpringArmComponent* SpringArm;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -71,6 +71,8 @@ protected:
 	FRotator DefaultRotation;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	FVector DefaultOffset;
+
+	FRotator GetRunningRotation();
 
 	float CameraControlAccumulatedTime = -1;
 

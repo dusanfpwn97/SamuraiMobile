@@ -20,6 +20,7 @@
 #include "Misc/SlashIndicator.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Camera/PlayerCam.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 
 APlayerPawn::APlayerPawn()
@@ -97,8 +98,10 @@ void APlayerPawn::MoveTowardsTarget()
 
 
 	FVector DeltaLoc = LastDirection * CurrentSpeed * World->DeltaTimeSeconds;
-	AddActorWorldOffset(DeltaLoc, true);
+	//AddActorWorldOffset(DeltaLoc, true);
 
+	AddMovementInput(LastDirection, 1);
+	
 }
 
 void APlayerPawn::SetNextTarget()
@@ -136,9 +139,10 @@ void APlayerPawn::SetNextTarget()
 void APlayerPawn::UpdateRotation()
 {
 	//if (ActionState == EActionState::ATTACKING || ActionState == EActionState::PREPARING_FOR_ATTACK) return;
-
-	SetActorRotation(LastDirection.Rotation());
-
+	
+	SetActorRotation(LastDirection.Rotation().Quaternion());
+	//GetCharacterMovement()->Rotat
+	
 }
 
 void APlayerPawn::SpawnCamera()
@@ -182,11 +186,12 @@ void APlayerPawn::Tick(float DeltaTime)
 
 	MoveTowardsTarget();
 	UpdateRotation();
-
+	
 	DoLoops();
-
+	
 	CheckPrepareToAttack();
 	
+
 
 }
 
@@ -344,7 +349,7 @@ void APlayerPawn::StartStartingDash()
 
 	ActionState = EActionState::STARTING_DASH;
 	DashAccumulatedTime = 0.f;
-
+	GetCharacterMovement()->MaxWalkSpeed = 0;
 	float MontageDuration = PlayAnimMontage(AttackInfo.StartDashMontage);
 
 	//float MinTime, MaxTime;
@@ -376,6 +381,8 @@ void APlayerPawn::StartDashing()
 	ActionState = EActionState::DASHING;
 	DashAccumulatedTime = 0.f;
 
+	GetCharacterMovement()->MaxWalkSpeed = 2600;
+
 	Camera->StartDash();
 }
 
@@ -400,7 +407,7 @@ void APlayerPawn::StartPreparingToAttack()
 	ActionState = EActionState::PREPARING_TO_ATTACK;
 	PrepareForAttackTarget = CurrentTarget;
 
-	CustomTimeDilation = 0.1;
+	CustomTimeDilation = 0.033;
 
 	FTransform Transform;
 	Transform.SetScale3D(FVector(1.f, 1.f, 1.f));
@@ -409,6 +416,8 @@ void APlayerPawn::StartPreparingToAttack()
 	ASlashIndicator* Indicator = (ASlashIndicator*)World->SpawnActor<ASlashIndicator>(SlashIndicatorClass, Transform);
 	
 	Camera->StartPreparingToAttack(true);
+
+	GetCharacterMovement()->MaxWalkSpeed = 0;
 
 
 	//FAttachmentTransformRules Rules = FAttachmentTransformRules::SnapToTargetNotIncludingScale;
@@ -438,6 +447,8 @@ void APlayerPawn::StartAttacking()
 	float MontageDuration = PlayAnimMontage(AttackInfo.AttackMontage);
 	
 	Camera->StartAttacking();
+
+	GetCharacterMovement()->MaxWalkSpeed = 0;
 
 	//float MinTime, MaxTime;
 	//HitSlowMoCurve->GetTimeRange(MinTime, MaxTime);
@@ -478,7 +489,9 @@ void APlayerPawn::StopAttackLoop()
 	StartRunning();
 
 	AttackAccumulatedTime = -1;
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
+
+
 }
 
 
@@ -490,6 +503,8 @@ void APlayerPawn::StartAttackingHit()
 	CurrentHitSlowMoAccumulatedTime = 0.f;
 	ActionState = EActionState::ATTACKING_HIT;
 	Camera->StartAttackingHit();
+
+	GetCharacterMovement()->MaxWalkSpeed = 0;
 }
 
 void APlayerPawn::AttackingHitLoop()
@@ -521,7 +536,7 @@ void APlayerPawn::StartEndingAttack()
 {
 	ActionState = EActionState::ENDING_ATTACK;
 	CustomTimeDilation = 1.f;
-
+	GetCharacterMovement()->MaxWalkSpeed = 0;
 	Camera->StartEndingAttack();
 }
 
@@ -535,7 +550,7 @@ void APlayerPawn::StartRunning()
 {
 	ActionState = EActionState::RUNNING;
 	AttackAccumulatedTime = 0;
-
+	GetCharacterMovement()->MaxWalkSpeed = 600;
 	Camera->StartRunning();
 }
 

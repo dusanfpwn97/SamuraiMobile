@@ -19,18 +19,17 @@ APlayerCam::APlayerCam()
 
 	//SceneComp = CreateDefaultSubobject<USceneComponent>(TEXT("SceneComp"));
 	//RootComponent = SceneComp;
-
-	
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	//sSpringArm->SetupAttachment(SceneComp);
-	RootComponent = SpringArm;
-	SpringArm->bEnableCameraLag = true;
-	SpringArm->bEnableCameraRotationLag = true;
+	//
+	//
+	//SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	//SpringArm->SetupAttachment(SceneComp);
+	//
+	//SpringArm->bEnableCameraLag = true;
+	//SpringArm->bEnableCameraRotationLag = true;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(SpringArm);
-
-
+	//Camera->SetupAttachment(SpringArm);
+	RootComponent = Camera;
 }
 
 // Called every frame
@@ -45,16 +44,16 @@ void APlayerCam::Tick(float DeltaTime)
 
 void APlayerCam::SetPlayer(APlayerPawn* Pawn)
 {
-	if (!Pawn || !SpringArm || !Camera)
+	if (!Pawn || !Camera)
 	{
 		Destroy();
 		return;
 	}
-	SetActorRotation(DefaultRotation);
+	Camera->SetWorldRotation(GetRunningRotation());
 
 	Player = Pawn;
-	StartingSpringArmLength = SpringArm->TargetArmLength;
-	StartingSpringOffset = SpringArm->TargetOffset;
+	//StartingSpringArmLength = SpringArm->TargetArmLength;
+	//StartingSpringOffset = SpringArm->TargetOffset;
 	//StartingSpringArmRot = SpringArm->GetComponentRotation();
 
 
@@ -67,8 +66,8 @@ void APlayerCam::SetPlayer(APlayerPawn* Pawn)
 
 void APlayerCam::StartPreparingToAttack(bool IsForward)
 {
-	SpringArm->CameraLagSpeed = 30.f;
-	SpringArm->CameraRotationLagSpeed = 30.f;
+	//SpringArm->CameraLagSpeed = 40.f;
+	//SpringArm->CameraRotationLagSpeed = 40.f;
 	if (IsForward)
 	{
 		CameraControlAccumulatedTime = 0;
@@ -137,8 +136,8 @@ void APlayerCam::PreparingToAttackLoop()
 		return;
 	}
 
-	SpringArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
-	SpringArm->TargetOffset = StartingSpringOffset + NewSocketOffset;
+	//SpringArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
+	//SpringArm->TargetOffset = StartingSpringOffset + NewSocketOffset;
 
 	FRotator Rot;
 	Rot.Roll = NewRotOffset.X;
@@ -153,21 +152,24 @@ void APlayerCam::PreparingToAttackLoop()
 
 	if (Player->ActionState == EActionState::PREPARING_TO_ATTACK || !Player->CurrentTarget)
 	{
-		SetActorRotation(Rot + DefaultRotation);
+		SetActorRotation(Rot + GetRunningRotation());
 	}
-	else
+	
+	else if(Player->ActionState == EActionState::ENDING_ATTACK)
 	{
 		FRotator LookAtTargetRot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), Player->CurrentTarget->GetActorLocation());
-		FRotator TempRot = Rot + DefaultRotation;
+		FRotator TempRot = Rot + GetRunningRotation();
 
-		FRotator FinalRot = FMath::Lerp(TempRot, SpringArm->GetComponentRotation(), Alpha);
+		FRotator FinalRot = FMath::Lerp(TempRot, GetActorRotation() , Alpha);
 		FinalRot.Yaw = TempRot.Yaw;
 
 		SetActorRotation(FinalRot);
+		
 	}
+	
 
 
-	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(World->DeltaRealTimeSeconds)));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(NewZoomVal)));
 }
 
 void APlayerCam::StartAttacking()
@@ -199,25 +201,20 @@ void APlayerCam::EndingAttackLoop()
 
 void APlayerCam::StartRunning()
 {
-	SpringArm->CameraLagSpeed = 6.f;
-	SpringArm->CameraRotationLagSpeed = 6.f;
+	//SpringArm->CameraLagSpeed = 6.f;
+	//SpringArm->CameraRotationLagSpeed = 6.f;
 }
 
-void APlayerCam::PlayCameraShake(TSoftClassPtr<UCameraShakeBase> CameraShakeClass)
-{
-	UWorld* World = GetWorld(); if (!World) return;
-	if (!CameraShakeClass) return;
-	CameraShakeClass.LoadSynchronous();
-	UClass* CamShakeClass = CameraShakeClass.Get();
-	if (!CamShakeClass) return;
-	// TODO maybe orient towards slash?
-	World->GetFirstPlayerController()->PlayerCameraManager->PlayWorldCameraShake(World, CamShakeClass, GetActorLocation(),3000,3000,1,0 );
 
-}
 
 // Default State
 void APlayerCam::RunningLoop()
 {
+	UWorld* World = GetWorld(); if (!World) return;
+	//SetActorRotation(FMath::RInterpTo(GetActorRotation(), GetRunningRotation(), World->GetDeltaSeconds(), 10.f));
+	SetActorRotation(GetRunningRotation());
+
+	//SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 5.f);
 }
 
 void APlayerCam::StartDash()
@@ -226,6 +223,10 @@ void APlayerCam::StartDash()
 
 void APlayerCam::DashingLoop()
 {
+	UWorld* World = GetWorld(); if (!World) return;
+	//SetActorRotation(FMath::RInterpTo(GetActorRotation(), GetRunningRotation(), World->GetDeltaSeconds(), 10.f));
+	SetActorRotation(GetRunningRotation());
+	//SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 5.f);
 }
 
 
@@ -278,13 +279,35 @@ void APlayerCam::DoLoops()
 
 }
 
+FRotator APlayerCam::GetRunningRotation()
+{
+	if (!Player) return FRotator();
+
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *Player->GetActorRotation().ToString()));
+
+	return Player->GetActorRotation() + DefaultRotation;
+
+}
+
 void APlayerCam::Move()
 {
 	if (!Player) return;
-	FVector NewLoc = Player->GetActorLocation() + DefaultOffset;
-	SetActorLocation(NewLoc);
+	UWorld* World = GetWorld(); if (!World) return;
+	
+	SetActorLocation(FMath::VInterpTo(GetActorLocation(), Player->GetActorLocation() + DefaultOffset, World->GetDeltaSeconds(), 15.f));
+}
 
-	//FRotator Rot = GetActorRotation();
-	//Rot.Yaw = Player->GetActorRotation().Yaw;
-	//SetActorRotation(Player->GetActorRotation());
+
+void APlayerCam::PlayCameraShake(TSoftClassPtr<UCameraShakeBase> CameraShakeClass)
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	if (!CameraShakeClass) return;
+
+	CameraShakeClass.LoadSynchronous();
+	UClass* CamShakeClass = CameraShakeClass.Get();
+	if (!CamShakeClass) return;
+
+	// TODO maybe orient towards slash?
+	World->GetFirstPlayerController()->PlayerCameraManager->PlayWorldCameraShake(World, CamShakeClass, GetActorLocation(), 3000, 3000, 1, false);
+
 }
