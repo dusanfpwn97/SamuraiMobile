@@ -110,8 +110,6 @@ protected:
 
 	// Runtime
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
-	float CurrentSpeed = 700.f;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	FVector LastDirection;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")

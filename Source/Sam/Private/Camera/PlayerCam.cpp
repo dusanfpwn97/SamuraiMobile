@@ -56,13 +56,14 @@ void APlayerCam::SetPlayer(APlayerPawn* Pawn)
 
 	Player = Pawn;
 	StartingSpringArmLength = SpringArm->TargetArmLength;
-	StartingSpringOffset = SpringArm->TargetOffset;
+	StartingSpringOffset = SpringArm->SocketOffset;
 	
 }
 
 
 void APlayerCam::StartPreparingToAttack(bool IsForward)
 {
+
 	//SpringArm->CameraLagSpeed = 40.f;
 	//SpringArm->CameraRotationLagSpeed = 40.f;
 	if (IsForward)
@@ -134,7 +135,7 @@ void APlayerCam::PreparingToAttackLoop()
 	}
 
 	SpringArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
-	//SpringArm->TargetOffset = StartingSpringOffset + NewSocketOffset;
+	SpringArm->SocketOffset = StartingSpringOffset + NewSocketOffset;
 
 	FRotator Rot;
 	Rot.Roll = NewRotOffset.X;
@@ -309,7 +310,9 @@ void APlayerCam::Move()
 	if (!Player) return;
 	UWorld* World = GetWorld(); if (!World) return;
 	
-	SetActorLocation(FMath::VInterpTo(GetActorLocation(), Player->GetActorLocation() + DefaultOffset, World->GetDeltaSeconds(), 13.f));
+	//SetActorLocation(FMath::VInterpTo(GetActorLocation(), Player->GetActorLocation() + DefaultOffset, World->GetDeltaSeconds(), 13.f));
+	SetActorLocation(Player->GetActorLocation() + FVector(0,0, DefaultZOffset));
+	
 }
 
 void APlayerCam::ApplyRotation()
@@ -319,30 +322,20 @@ void APlayerCam::ApplyRotation()
 	SetActorRotation(FMath::RInterpTo(GetActorRotation(), NewTargetRot, World->DeltaTimeSeconds, 9));
 }
 
-void APlayerCam::DebugPrintState()
-{
-	if (!Player) return;
-	const TEnumAsByte<EActionState> ActionState = Player->ActionState;
-	FString EnumAsString = UEnum::GetValueAsString(ActionState.GetValue());
-
-	UE_LOG(LogTemp, Warning, TEXT("State: %s"), *EnumAsString);
-	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("State: %s"), *EnumAsString));
-	
-}
 
 void APlayerCam::MoveToDefaultLoop()
 {
 	UWorld* World = GetWorld(); if (!World) return;
 	NewTargetRot = GetRunningRotation();
-
-	SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 8.f);
+	SpringArm->SocketOffset	   = FMath::VInterpTo(SpringArm->SocketOffset, StartingSpringOffset, World->GetDeltaSeconds(), 7.f);
+	SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 7.f);
 }
 
 
 void APlayerCam::PlayCameraShake(TSoftClassPtr<UCameraShakeBase> CameraShakeClass)
 {
 	UWorld* World = GetWorld(); if (!World) return;
-	if (!CameraShakeClass) return;
+	if (CameraShakeClass.IsNull()) return;
 
 	CameraShakeClass.LoadSynchronous();
 	UClass* CamShakeClass = CameraShakeClass.Get();

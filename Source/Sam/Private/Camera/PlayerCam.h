@@ -73,7 +73,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	FRotator DefaultRotation;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
-	FVector DefaultOffset;
+	float DefaultZOffset;
 
 	FRotator GetRunningRotation();
 
@@ -85,7 +85,6 @@ protected:
 	FRotator NewTargetRot;
 	void ApplyRotation();
 
-	void DebugPrintState();
 	void MoveToDefaultLoop();
 
 

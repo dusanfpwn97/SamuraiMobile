@@ -144,9 +144,7 @@ void APlayerPawn::Tick(float DeltaTime)
 	
 	DoLoops();
 	
-	CheckPrepareToAttack();
-	
-
+	//CheckPrepareToAttack();
 	UpdateRotation();
 }
 
@@ -192,8 +190,7 @@ void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 
 void APlayerPawn::CheckPrepareToAttack()
 {
-	if (ActionState == EActionState::PREPARING_TO_ATTACK/* || !IsDashing()*/) return;
-
+	if (ActionState == EActionState::PREPARING_TO_ATTACK) return;
 	if (!CurrentTarget) return;
 	if (PrepareForAttackTarget == CurrentTarget) return;
 
@@ -326,6 +323,7 @@ void APlayerPawn::PreparingToDashLoop()
 		SetActorRotation(FMath::RInterpTo(GetActorRotation(), Rot, World->DeltaTimeSeconds, 10));
 
 	}
+	
 }
 
 void APlayerPawn::StartStartingDash()
@@ -356,7 +354,7 @@ void APlayerPawn::StartingDashLoop()
 	AttackInfo.StartDashSpeedCurve->GetTimeRange(MinTime, MaxTime);
 
 
-	CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
 	DashAccumulatedTime += World->DeltaRealTimeSeconds;
 
 	if (CurrentTarget)
@@ -370,7 +368,10 @@ void APlayerPawn::StartingDashLoop()
 	if (DashAccumulatedTime > MaxTime)
 	{
 		StartDashing();
+		return;
 	}
+
+	
 }
 
 void APlayerPawn::StartDashing()
@@ -398,11 +399,14 @@ void APlayerPawn::DashingLoop()
 	}
 
 
-	CurrentSpeed = DashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = DashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
 	DashAccumulatedTime += World->DeltaRealTimeSeconds;
 
 	MoveTowardsDirection();
 	SetActorRotation(LastDirection.Rotation().Quaternion());
+
+	CheckPrepareToAttack();
+
 }
 
 void APlayerPawn::StartPreparingToAttack()
@@ -432,7 +436,8 @@ void APlayerPawn::StartPreparingToAttack()
 void APlayerPawn::PreparingToAttackLoop()
 {
 	if (ActionState != EActionState::PREPARING_TO_ATTACK) return;
-	CurrentSpeed = PrepareToAttackSpeed;
+
+	GetCharacterMovement()->MaxWalkSpeed = 0;
 }
 
 void APlayerPawn::StartAttacking()
@@ -464,9 +469,7 @@ void APlayerPawn::StartAttacking()
 void APlayerPawn::AttackingLoop()
 {
 	if (ActionState != EActionState::ATTACKING) return;
-	CurrentSpeed = 0.f;
-
-
+	
 	AdvanceAttackTime();
 
 }
@@ -525,8 +528,6 @@ void APlayerPawn::AttackingHitLoop()
 	float TempSlowMoVal = HitSlowMoCurve->GetFloatValue(CurrentHitSlowMoAccumulatedTime);
 	CustomTimeDilation = TempSlowMoVal;
 
-	CurrentSpeed = 0;
-
 	//AdvanceAttackTime();
 
 	if (CurrentHitSlowMoAccumulatedTime > MaxTime)
@@ -546,7 +547,6 @@ void APlayerPawn::StartEndingAttack()
 
 void APlayerPawn::EndingAttackLoop()
 {
-	CurrentSpeed = 0.f;
 	AdvanceAttackTime();
 }
 
@@ -608,11 +608,11 @@ void APlayerPawn::UpdateDirection()
 
 	LastDirection = FMath::VInterpTo(LastDirection, Direction, World->DeltaTimeSeconds, 7.f);
 
-	if (Distance < 150) return;
+	//if (Distance < AttackInfo.DistanceForSlowdown) return;
 
 
 
-	FVector DeltaLoc = LastDirection * CurrentSpeed * World->DeltaTimeSeconds;
+	//FVector DeltaLoc = LastDirection * CurrentSpeed * World->DeltaTimeSeconds;
 }
 
 const bool APlayerPawn::IsDashing()
