@@ -380,7 +380,7 @@ void APlayerPawn::StartDashing()
 	ActionState = EActionState::DASHING;
 	DashAccumulatedTime = 0.f;
 
-	GetCharacterMovement()->MaxWalkSpeed = 2600;
+	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 
 	//MoveTowardsTarget();
 
