@@ -21,15 +21,15 @@ APlayerCam::APlayerCam()
 	//RootComponent = SceneComp;
 	//
 	//
-	//SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	RootComponent = SpringArm;
 	//SpringArm->SetupAttachment(SceneComp);
 	//
 	//SpringArm->bEnableCameraLag = true;
 	//SpringArm->bEnableCameraRotationLag = true;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	//Camera->SetupAttachment(SpringArm);
-	RootComponent = Camera;
+	Camera->SetupAttachment(SpringArm);
 }
 
 // Called every frame
@@ -37,9 +37,12 @@ void APlayerCam::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	//DebugPrintState();
 	Move();
 	DoLoops();
 
+
+	ApplyRotation();
 }
 
 void APlayerCam::SetPlayer(APlayerPawn* Pawn)
@@ -52,15 +55,9 @@ void APlayerCam::SetPlayer(APlayerPawn* Pawn)
 	Camera->SetWorldRotation(GetRunningRotation());
 
 	Player = Pawn;
-	//StartingSpringArmLength = SpringArm->TargetArmLength;
-	//StartingSpringOffset = SpringArm->TargetOffset;
-	//StartingSpringArmRot = SpringArm->GetComponentRotation();
-
-
-	//const FAttachmentTransformRules Rules = FAttachmentTransformRules(EAttachmentRule::SnapToTarget	, true);
-
-	//AttachToActor(Player, Rules);
-
+	StartingSpringArmLength = SpringArm->TargetArmLength;
+	StartingSpringOffset = SpringArm->TargetOffset;
+	
 }
 
 
@@ -136,7 +133,7 @@ void APlayerCam::PreparingToAttackLoop()
 		return;
 	}
 
-	//SpringArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
+	SpringArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
 	//SpringArm->TargetOffset = StartingSpringOffset + NewSocketOffset;
 
 	FRotator Rot;
@@ -146,27 +143,29 @@ void APlayerCam::PreparingToAttackLoop()
 
 	const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
 
-	//TargetArm->SetRelativeRotation(FMath::Lerp(StartingSpringArmRot, Rot + StartingSpringArmRot, Alpha));
-
-	//SpringArm->SetWorldRotation(Rot + StartingSpringArmRot);
-
 	if (Player->ActionState == EActionState::PREPARING_TO_ATTACK || !Player->CurrentTarget)
 	{
-		SetActorRotation(Rot + GetRunningRotation());
+		NewTargetRot = Rot + GetRunningRotation();
+		return;
 	}
-	
-	else if(Player->ActionState == EActionState::ENDING_ATTACK)
+
+	if(Player->ActionState == EActionState::ENDING_ATTACK)
 	{
+		if (!Player->CurrentTarget) return;
 		FRotator LookAtTargetRot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), Player->CurrentTarget->GetActorLocation());
 		FRotator TempRot = Rot + GetRunningRotation();
-
+		
 		FRotator FinalRot = FMath::Lerp(TempRot, GetActorRotation() , Alpha);
 		FinalRot.Yaw = TempRot.Yaw;
-
-		SetActorRotation(FinalRot);
 		
+		NewTargetRot = FinalRot;
+		
+		return;
 	}
+
+
 	
+
 
 
 	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(NewZoomVal)));
@@ -192,11 +191,14 @@ void APlayerCam::AttackingHitLoop()
 
 void APlayerCam::StartEndingAttack()
 {
-	StartPreparingToAttack(false);
+	//StartPreparingToAttack(false);
 }
 
 void APlayerCam::EndingAttackLoop()
 {
+	UWorld* World = GetWorld(); if (!World) return;
+
+	MoveToDefaultLoop();
 }
 
 void APlayerCam::StartRunning()
@@ -207,14 +209,20 @@ void APlayerCam::StartRunning()
 
 
 
+void APlayerCam::PreparingToDashLoop()
+{
+	MoveToDefaultLoop();
+}
+
 // Default State
 void APlayerCam::RunningLoop()
 {
-	UWorld* World = GetWorld(); if (!World) return;
-	//SetActorRotation(FMath::RInterpTo(GetActorRotation(), GetRunningRotation(), World->GetDeltaSeconds(), 10.f));
-	SetActorRotation(GetRunningRotation());
-
-	//SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 5.f);
+	//UWorld* World = GetWorld(); if (!World) return;
+	////SetActorRotation(FMath::RInterpTo(GetActorRotation(), GetRunningRotation(), World->GetDeltaSeconds(), 10.f));
+	//SetActorRotation(GetRunningRotation());
+	//
+	//NewTargetRot = GetRunningRotation();
+	////SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 5.f);
 }
 
 void APlayerCam::StartDash()
@@ -224,11 +232,14 @@ void APlayerCam::StartDash()
 void APlayerCam::DashingLoop()
 {
 	UWorld* World = GetWorld(); if (!World) return;
-	//SetActorRotation(FMath::RInterpTo(GetActorRotation(), GetRunningRotation(), World->GetDeltaSeconds(), 10.f));
-	SetActorRotation(GetRunningRotation());
-	//SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 5.f);
+	
+	MoveToDefaultLoop();
 }
 
+
+void APlayerCam::StartPreparingToDash()
+{
+}
 
 void APlayerCam::StartStartingDash()
 {
@@ -241,6 +252,11 @@ void APlayerCam::StartingDashLoop()
 
 void APlayerCam::DoLoops()
 {
+	if (Player->ActionState == EActionState::PREPARING_TO_DASH)
+	{
+		PreparingToDashLoop();
+		return;
+	}
 	if (Player->ActionState == EActionState::STARTING_DASH)
 	{
 		StartingDashLoop();
@@ -254,7 +270,6 @@ void APlayerCam::DoLoops()
 	else if (Player->ActionState == EActionState::PREPARING_TO_ATTACK)
 	{
 		PreparingToAttackLoop();
-		return;
 	}
 	else if (Player->ActionState == EActionState::ATTACKING)
 	{
@@ -283,7 +298,7 @@ FRotator APlayerCam::GetRunningRotation()
 {
 	if (!Player) return FRotator();
 
-	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *Player->GetActorRotation().ToString()));
+	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Red, FString::Printf(TEXT("%s"), *Player->GetActorRotation().ToString()));
 
 	return Player->GetActorRotation() + DefaultRotation;
 
@@ -294,7 +309,33 @@ void APlayerCam::Move()
 	if (!Player) return;
 	UWorld* World = GetWorld(); if (!World) return;
 	
-	SetActorLocation(FMath::VInterpTo(GetActorLocation(), Player->GetActorLocation() + DefaultOffset, World->GetDeltaSeconds(), 15.f));
+	SetActorLocation(FMath::VInterpTo(GetActorLocation(), Player->GetActorLocation() + DefaultOffset, World->GetDeltaSeconds(), 13.f));
+}
+
+void APlayerCam::ApplyRotation()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+
+	SetActorRotation(FMath::RInterpTo(GetActorRotation(), NewTargetRot, World->DeltaTimeSeconds, 9));
+}
+
+void APlayerCam::DebugPrintState()
+{
+	if (!Player) return;
+	const TEnumAsByte<EActionState> ActionState = Player->ActionState;
+	FString EnumAsString = UEnum::GetValueAsString(ActionState.GetValue());
+
+	UE_LOG(LogTemp, Warning, TEXT("State: %s"), *EnumAsString);
+	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("State: %s"), *EnumAsString));
+	
+}
+
+void APlayerCam::MoveToDefaultLoop()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	NewTargetRot = GetRunningRotation();
+
+	SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 8.f);
 }
 
 

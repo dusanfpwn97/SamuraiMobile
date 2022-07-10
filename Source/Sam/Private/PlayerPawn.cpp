@@ -44,60 +44,14 @@ void APlayerPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputCo
 
 void APlayerPawn::SetStartingValues()
 {
-	
-	StartRunning();
+	StartPreparingToDash();
+	//StartRunning();
 	
 }
 
-void APlayerPawn::MoveTowardsTarget()
+void APlayerPawn::MoveTowardsDirection()
 {
-	UWorld* World = GetWorld();
 
-
-	if (!World) return;
-
-	if (!CurrentTarget)
-	{
-		SetNextTarget();
-		if (!CurrentTarget) return;
-	}
-	else
-	{
-		AEnemyBase* sss = (AEnemyBase*)CurrentTarget;
-
-		if (sss)
-		{
-			if (!sss->IsAlive)
-			{
-				SetNextTarget();
-				if (!CurrentTarget) return;
-			}
-		}
-		else
-		{
-			SetNextTarget();
-			if (!CurrentTarget) return;
-		}
-	}
-
-	FVector TargetLocation = CurrentTarget->GetActorLocation();
-	TargetLocation += GetActorRightVector() * -26.f;
-	//TargetLocation += GetActorForwardVector() * -166.f;
-
-	float Distance = FVector::Dist(TargetLocation, GetActorLocation());
-
-	//if (Distance < 120) return;
-
-	FVector Direction = TargetLocation - GetActorLocation();
-	Direction.Normalize();
-
-	LastDirection = FMath::VInterpTo(LastDirection, Direction, World->DeltaTimeSeconds, 7.f);
-
-	if (Distance < 150) return;
-
-
-
-	FVector DeltaLoc = LastDirection * CurrentSpeed * World->DeltaTimeSeconds;
 	//AddActorWorldOffset(DeltaLoc, true);
 
 	AddMovementInput(LastDirection, 1);
@@ -106,7 +60,7 @@ void APlayerPawn::MoveTowardsTarget()
 
 void APlayerPawn::SetNextTarget()
 {
-	if (IsAttacking()) return;
+	//if (IsAttacking()) return;
 	UWorld* World = GetWorld();
 	if (!World) return;
 	ASamGameMode* SamGM = (ASamGameMode*)UGameplayStatics::GetGameMode(World);
@@ -140,7 +94,7 @@ void APlayerPawn::UpdateRotation()
 {
 	//if (ActionState == EActionState::ATTACKING || ActionState == EActionState::PREPARING_FOR_ATTACK) return;
 	
-	SetActorRotation(LastDirection.Rotation().Quaternion());
+	//SetActorRotation(LastDirection.Rotation().Quaternion());
 	//GetCharacterMovement()->Rotat
 	
 }
@@ -184,15 +138,16 @@ void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	MoveTowardsTarget();
-	UpdateRotation();
+	//MoveTowardsTarget();
+	UpdateDirection();
+
 	
 	DoLoops();
 	
 	CheckPrepareToAttack();
 	
 
-
+	UpdateRotation();
 }
 
 void APlayerPawn::BeginPlay()
@@ -301,6 +256,13 @@ void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 
 void APlayerPawn::DoLoops()
 {
+
+
+	if (ActionState == EActionState::PREPARING_TO_DASH)
+	{
+		PreparingToDashLoop();
+		return;
+	}
 	if (ActionState == EActionState::STARTING_DASH)
 	{
 		StartingDashLoop();
@@ -338,6 +300,34 @@ void APlayerPawn::DoLoops()
 	}
 }
 
+void APlayerPawn::StartPreparingToDash()
+{
+	if (!AttackInfo.StartDashSpeedCurve || !AttackInfo.StartDashMontage)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Starting Dash cannot be started. Something is not set. PlayerPawn->StartDashing()")));
+		return;
+	}
+
+	SetNextTarget();
+	ActionState = EActionState::PREPARING_TO_DASH;
+
+	GetCharacterMovement()->MaxWalkSpeed = 0;
+
+	Camera->StartPreparingToDash();
+	//float MontageDuration = PlayAnimMontage(AttackInfo.StartDashMontage);
+}
+
+void APlayerPawn::PreparingToDashLoop()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	if (CurrentTarget)
+	{
+		FRotator Rot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), CurrentTarget->GetActorLocation());
+		SetActorRotation(FMath::RInterpTo(GetActorRotation(), Rot, World->DeltaTimeSeconds, 10));
+
+	}
+}
+
 void APlayerPawn::StartStartingDash()
 {
 
@@ -369,6 +359,14 @@ void APlayerPawn::StartingDashLoop()
 	CurrentSpeed = AttackInfo.StartDashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
 	DashAccumulatedTime += World->DeltaRealTimeSeconds;
 
+	if (CurrentTarget)
+	{
+		FRotator Rot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), CurrentTarget->GetActorLocation());
+		SetActorRotation(FMath::RInterpTo(GetActorRotation(), Rot, World->DeltaTimeSeconds, 10));
+		
+	}
+
+
 	if (DashAccumulatedTime > MaxTime)
 	{
 		StartDashing();
@@ -382,6 +380,8 @@ void APlayerPawn::StartDashing()
 	DashAccumulatedTime = 0.f;
 
 	GetCharacterMovement()->MaxWalkSpeed = 2600;
+
+	//MoveTowardsTarget();
 
 	Camera->StartDash();
 }
@@ -397,8 +397,12 @@ void APlayerPawn::DashingLoop()
 		return;
 	}
 
+
 	CurrentSpeed = DashSpeedCurve->GetFloatValue(DashAccumulatedTime) * RunSpeed;
 	DashAccumulatedTime += World->DeltaRealTimeSeconds;
+
+	MoveTowardsDirection();
+	SetActorRotation(LastDirection.Rotation().Quaternion());
 }
 
 void APlayerPawn::StartPreparingToAttack()
@@ -486,11 +490,11 @@ void APlayerPawn::AdvanceAttackTime()
 void APlayerPawn::StopAttackLoop()
 {
 	OnAttackEnded();
-	StartRunning();
+	//StartRunning();
 
 	AttackAccumulatedTime = -1;
 	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
-
+	StartPreparingToDash();
 
 }
 
@@ -511,7 +515,7 @@ void APlayerPawn::AttackingHitLoop()
 {
 
 	UWorld* World = GetWorld(); if (!World) return;
-	if (ActionState != EActionState::ATTACKING_HIT) return;
+	//if (ActionState != EActionState::ATTACKING_HIT) return;
 	//if (CurrentHitSlowMoTimeAccumulated < 0.f) return;
 
 	float MinTime, MaxTime;
@@ -523,7 +527,7 @@ void APlayerPawn::AttackingHitLoop()
 
 	CurrentSpeed = 0;
 
-	AdvanceAttackTime();
+	//AdvanceAttackTime();
 
 	if (CurrentHitSlowMoAccumulatedTime > MaxTime)
 	{
@@ -548,16 +552,67 @@ void APlayerPawn::EndingAttackLoop()
 
 void APlayerPawn::StartRunning()
 {
-	ActionState = EActionState::RUNNING;
-	AttackAccumulatedTime = 0;
-	GetCharacterMovement()->MaxWalkSpeed = 600;
-	Camera->StartRunning();
+	//ActionState = EActionState::RUNNING;
+	//AttackAccumulatedTime = 0;
+	//GetCharacterMovement()->MaxWalkSpeed = 600;
+	//Camera->StartRunning();
 }
 
 void APlayerPawn::RunningLoop()
 {
-	if (ActionState != EActionState::RUNNING) return;
-	CurrentSpeed = RunSpeed;
+	//if (ActionState != EActionState::RUNNING) return;
+	//CurrentSpeed = RunSpeed;
+}
+
+void APlayerPawn::UpdateDirection()
+{
+	UWorld* World = GetWorld();
+
+
+	if (!World) return;
+
+	if (!CurrentTarget)
+	{
+		SetNextTarget();
+		if (!CurrentTarget) return;
+	}
+	else
+	{
+		AEnemyBase* sss = (AEnemyBase*)CurrentTarget;
+
+		if (sss)
+		{
+			if (!sss->IsAlive)
+			{
+				SetNextTarget();
+				if (!CurrentTarget) return;
+			}
+		}
+		else
+		{
+			SetNextTarget();
+			if (!CurrentTarget) return;
+		}
+	}
+
+	FVector TargetLocation = CurrentTarget->GetActorLocation();
+	TargetLocation += GetActorRightVector() * -26.f;
+	//TargetLocation += GetActorForwardVector() * -166.f;
+
+	float Distance = FVector::Dist(TargetLocation, GetActorLocation());
+
+	//if (Distance < 120) return;
+
+	FVector Direction = TargetLocation - GetActorLocation();
+	Direction.Normalize();
+
+	LastDirection = FMath::VInterpTo(LastDirection, Direction, World->DeltaTimeSeconds, 7.f);
+
+	if (Distance < 150) return;
+
+
+
+	FVector DeltaLoc = LastDirection * CurrentSpeed * World->DeltaTimeSeconds;
 }
 
 const bool APlayerPawn::IsDashing()

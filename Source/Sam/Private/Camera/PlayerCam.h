@@ -22,6 +22,7 @@ public:
 
 	void SetPlayer(class APlayerPawn* Pawn);
 
+	void StartPreparingToDash();
 	void StartStartingDash();
 	void StartDash();
 	void StartPreparingToAttack(bool IsForward);
@@ -39,9 +40,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
 	TSoftClassPtr<UCameraShakeBase> CameraShakeOnEnemyHitWeak;
 
+	UCurveFloat* DashFOVCurve;
 	void DoLoops();
 
-	void RunningLoop(); // Default State
+	void PreparingToDashLoop(); // Default State
+	void RunningLoop(); 
 	void EndingAttackLoop();
 	void AttackingHitLoop();
 	void AttackingLoop();
@@ -52,8 +55,8 @@ protected:
 
 	//UPROPERTY(EditAnywhere)
 	//	class USceneComponent* SceneComp;
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	//	class USpringArmComponent* SpringArm;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class USpringArmComponent* SpringArm;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -78,7 +81,12 @@ protected:
 
 	void Move();
 
+	
+	FRotator NewTargetRot;
+	void ApplyRotation();
 
+	void DebugPrintState();
+	void MoveToDefaultLoop();
 
 
 };

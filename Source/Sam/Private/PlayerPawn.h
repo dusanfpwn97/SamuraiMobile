@@ -17,6 +17,7 @@ UENUM(BlueprintType)
 enum class EActionState : uint8
 {
 	NOT_MOVING,
+	PREPARING_TO_DASH,
 	STARTING_DASH,
 	DASHING,
 	PREPARING_TO_ATTACK,
@@ -127,7 +128,7 @@ protected:
 
 	//
 	void SetStartingValues();
-	void MoveTowardsTarget();
+	void MoveTowardsDirection();
 	void SetNextTarget();
 	void UpdateRotation();
 	void CheckPrepareToAttack();
@@ -138,10 +139,12 @@ protected:
 
 	virtual void OnWeaponHitEnemy(AActor* Actor, FName Bone) override;
 
-
 	void AdvanceAttackTime();
 
 	void DoLoops();
+
+	void StartPreparingToDash();
+	void PreparingToDashLoop();
 
 	void StartStartingDash();
 	void StartingDashLoop();
@@ -164,6 +167,9 @@ protected:
 	
 	void StartRunning();
 	void RunningLoop();
+
+	void UpdateDirection();
+
 
 };
 

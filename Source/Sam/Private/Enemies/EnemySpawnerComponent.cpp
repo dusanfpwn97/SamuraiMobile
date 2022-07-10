@@ -43,8 +43,8 @@ void UEnemySpawnerComponent::SpawnEnemy()
 		World->GetTimerManager().ClearTimer(EnemySpawnTH);
 	}
 
-	float Y = FMath::FRandRange(-1200.f, 1200.f);
-	float X = SpawnedEnemies.Num() * FMath::FRandRange(2000.f, 2800.f) + 2200.f;
+	float Y = FMath::FRandRange(-1200.f, 1200.f); // left right
+	float X = SpawnedEnemies.Num() * FMath::FRandRange(1000.f, 1300.f) + 800.f; // Distance apart
 	
 	UClass* TempClass = ClassToSpawn.Get();
 
