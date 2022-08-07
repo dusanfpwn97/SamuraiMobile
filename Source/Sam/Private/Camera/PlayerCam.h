@@ -29,7 +29,6 @@ public:
 	void StartAttacking();
 	void StartAttackingHit();
 	void StartEndingAttack();
-	void StartRunning();
 
 	void PlayCameraShake(TSoftClassPtr<UCameraShakeBase> CameraShakeClass);
 
@@ -44,7 +43,6 @@ protected:
 	void DoLoops();
 
 	void PreparingToDashLoop(); // Default State
-	void RunningLoop(); 
 	void EndingAttackLoop();
 	void AttackingHitLoop();
 	void AttackingLoop();
@@ -86,6 +84,5 @@ protected:
 	void ApplyRotation();
 
 	void MoveToDefaultLoop();
-
 
 };

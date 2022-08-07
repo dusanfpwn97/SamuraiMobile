@@ -17,14 +17,11 @@ UENUM(BlueprintType)
 enum class EActionState : uint8
 {
 	NOT_MOVING,
-	PREPARING_TO_DASH,
-	STARTING_DASH,
 	DASHING,
 	PREPARING_TO_ATTACK,
-	ATTACKING,
+	STARTING_ATTACK,
 	ATTACKING_HIT,
-	ENDING_ATTACK,
-	RUNNING
+	ENDING_ATTACK
 };
 
 
@@ -39,6 +36,8 @@ struct FAttackInfo
 	UAnimMontage* StartDashMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UAnimMontage* AttackMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UCurveFloat* StartAttackSlomoCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UCurveFloat* StartDashSpeedCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -72,6 +71,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	const bool IsDashing();
 
+	bool GetTargetUnderFinger(ETouchIndex::Type FingerIndex);
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
 		FAttackInfo AttackInfo;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
@@ -97,6 +98,11 @@ protected:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	void UpdateSwipeDirection();
+
+	FVector SwipeDirection;
+	TMap<ETouchIndex::Type, FVector> StartTouches;
+	TMap<ETouchIndex::Type, FVector> CurrentTouches;
 
 	// Setup
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
@@ -116,7 +122,7 @@ protected:
 	ABaseWeapon* CurrentWeapon;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
 	TSubclassOf<class ASlashIndicator> SlashIndicatorClass;
-	AActor* PrepareForAttackTarget;
+	AActor* LastAttackedTarget;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	bool IsInDamageWindow = false;
 
@@ -124,12 +130,12 @@ protected:
 	float CurrentHitSlowMoAccumulatedTime = -1;
 	float AttackAccumulatedTime = -1;
 
+	ASlashIndicator* SlashIndicator;
 	//
 	void SetStartingValues();
 	void MoveTowardsDirection();
 	void SetNextTarget();
-	void UpdateRotation();
-	void CheckPrepareToAttack();
+	void TryToSlash();
 
 
 	UFUNCTION(BlueprintImplementableEvent)
@@ -140,12 +146,6 @@ protected:
 	void AdvanceAttackTime();
 
 	void DoLoops();
-
-	void StartPreparingToDash();
-	void PreparingToDashLoop();
-
-	void StartStartingDash();
-	void StartingDashLoop();
 
 	void StartDashing();
 	void DashingLoop();
@@ -163,11 +163,9 @@ protected:
 	void StartEndingAttack();
 	void EndingAttackLoop();
 	
-	void StartRunning();
-	void RunningLoop();
-
 	void UpdateDirection();
 
 
+	bool StartedAttackingGame = false;
 };
 

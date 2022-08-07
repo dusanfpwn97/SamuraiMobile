@@ -75,6 +75,109 @@ void APlayerCam::StartPreparingToAttack(bool IsForward)
 void APlayerCam::PreparingToAttackLoop()
 {
 
+	//UWorld* World = GetWorld(); if (!World || !Player) return;
+	//if (!Player->AttackInfo.CameraZoomCurve || !Player->AttackInfo.CameraRotationCurve || !Player->AttackInfo.CameraLocationCurve) return;
+	//
+	//TArray<float> MaxTimes;
+	//float ZoomMinTime, ZoomMaxTime, RotMinTime, RotMaxTime, LocMinTime, LocMaxTime, MaxTime;
+	//float NewZoomVal;
+	//ZoomMinTime = ZoomMaxTime = RotMinTime = RotMinTime = RotMaxTime = LocMinTime = LocMaxTime = MaxTime = NewZoomVal = 0;
+	//
+	//FVector NewRotOffset = FVector::ZeroVector;
+	//FVector NewSocketOffset = FVector::ZeroVector;
+	//
+	//if (Player->AttackInfo.CameraZoomCurve)
+	//{
+	//	Player->AttackInfo.CameraZoomCurve->GetTimeRange(ZoomMinTime, ZoomMaxTime);
+	//	NewZoomVal = Player->AttackInfo.CameraZoomCurve->GetFloatValue(CameraControlAccumulatedTime);
+	//}
+	//if (Player->AttackInfo.CameraRotationCurve)
+	//{
+	//	Player->AttackInfo.CameraRotationCurve->GetTimeRange(RotMinTime, RotMaxTime);
+	//	NewRotOffset = Player->AttackInfo.CameraRotationCurve->GetVectorValue(CameraControlAccumulatedTime);
+	//}
+	//if (Player->AttackInfo.CameraLocationCurve)
+	//{
+	//	Player->AttackInfo.CameraLocationCurve->GetTimeRange(LocMinTime, LocMaxTime);
+	//	NewSocketOffset = Player->AttackInfo.CameraLocationCurve->GetVectorValue(CameraControlAccumulatedTime);
+	//}
+	//
+	//MaxTime = FMath::Max(ZoomMaxTime, RotMaxTime);
+	//MaxTime = FMath::Max(MaxTime, LocMaxTime);
+	//
+	//if (Player->ActionState == EActionState::PREPARING_TO_ATTACK)
+	//{
+	//	// Is Current timeline finished forwards
+	//	if (CameraControlAccumulatedTime > MaxTime)
+	//	{
+	//		return;
+	//	}
+	//	else
+	//	{
+	//		CameraControlAccumulatedTime += World->DeltaRealTimeSeconds;
+	//	}
+	//}
+	//else if (Player->ActionState == EActionState::ENDING_ATTACK)
+	//{
+	//	// Is Current timeline finished backwards
+	//	if (CameraControlAccumulatedTime < 0)
+	//	{
+	//		return;
+	//	}
+	//	else
+	//	{
+	//		CameraControlAccumulatedTime -= World->DeltaRealTimeSeconds;
+	//	}
+	//}
+	//else
+	//{
+	//	return;
+	//}
+	//
+	//SpringArm->TargetArmLength = StartingSpringArmLength + NewZoomVal;
+	//SpringArm->SocketOffset = StartingSpringOffset + NewSocketOffset;
+	//
+	//FRotator Rot;
+	//Rot.Roll = NewRotOffset.X;
+	//Rot.Pitch = NewRotOffset.Y;
+	//Rot.Yaw = NewRotOffset.Z;
+	//
+	//const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
+	//
+	//if (Player->ActionState == EActionState::PREPARING_TO_ATTACK || !Player->CurrentTarget)
+	//{
+	//	NewTargetRot = Rot + GetRunningRotation();
+	//	return;
+	//}
+	//
+	//if (Player->ActionState == EActionState::ENDING_ATTACK)
+	//{
+	//	if (!Player->CurrentTarget) return;
+	//	FRotator LookAtTargetRot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), Player->CurrentTarget->GetActorLocation());
+	//	FRotator TempRot = Rot + GetRunningRotation();
+	//
+	//	FRotator FinalRot = FMath::Lerp(TempRot, GetActorRotation(), Alpha);
+	//	FinalRot.Yaw = TempRot.Yaw;
+	//
+	//	NewTargetRot = FinalRot;
+	//
+	//	return;
+	//}
+
+
+	
+
+
+
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(NewZoomVal)));
+}
+
+void APlayerCam::StartAttacking()
+{
+}
+
+void APlayerCam::AttackingLoop()
+{
 	UWorld* World = GetWorld(); if (!World || !Player) return;
 	if (!Player->AttackInfo.CameraZoomCurve || !Player->AttackInfo.CameraRotationCurve || !Player->AttackInfo.CameraLocationCurve) return;
 
@@ -105,7 +208,7 @@ void APlayerCam::PreparingToAttackLoop()
 	MaxTime = FMath::Max(ZoomMaxTime, RotMaxTime);
 	MaxTime = FMath::Max(MaxTime, LocMaxTime);
 
-	if (Player->ActionState == EActionState::PREPARING_TO_ATTACK)
+	if (Player->ActionState == EActionState::STARTING_ATTACK || Player->ActionState == EActionState::ATTACKING_HIT)
 	{
 		// Is Current timeline finished forwards
 		if (CameraControlAccumulatedTime > MaxTime)
@@ -144,40 +247,25 @@ void APlayerCam::PreparingToAttackLoop()
 
 	const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
 
-	if (Player->ActionState == EActionState::PREPARING_TO_ATTACK || !Player->CurrentTarget)
+	if (Player->ActionState == EActionState::STARTING_ATTACK || Player->ActionState == EActionState::ATTACKING_HIT || !Player->CurrentTarget)
 	{
 		NewTargetRot = Rot + GetRunningRotation();
 		return;
 	}
 
-	if(Player->ActionState == EActionState::ENDING_ATTACK)
+	if (Player->ActionState == EActionState::ENDING_ATTACK)
 	{
 		if (!Player->CurrentTarget) return;
 		FRotator LookAtTargetRot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), Player->CurrentTarget->GetActorLocation());
 		FRotator TempRot = Rot + GetRunningRotation();
-		
-		FRotator FinalRot = FMath::Lerp(TempRot, GetActorRotation() , Alpha);
+
+		FRotator FinalRot = FMath::Lerp(TempRot, GetActorRotation(), Alpha);
 		FinalRot.Yaw = TempRot.Yaw;
-		
+
 		NewTargetRot = FinalRot;
-		
+
 		return;
 	}
-
-
-	
-
-
-
-	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s"), *FString::SanitizeFloat(NewZoomVal)));
-}
-
-void APlayerCam::StartAttacking()
-{
-}
-
-void APlayerCam::AttackingLoop()
-{
 }
 
 void APlayerCam::StartAttackingHit()
@@ -202,28 +290,9 @@ void APlayerCam::EndingAttackLoop()
 	MoveToDefaultLoop();
 }
 
-void APlayerCam::StartRunning()
-{
-	//SpringArm->CameraLagSpeed = 6.f;
-	//SpringArm->CameraRotationLagSpeed = 6.f;
-}
-
-
-
 void APlayerCam::PreparingToDashLoop()
 {
 	MoveToDefaultLoop();
-}
-
-// Default State
-void APlayerCam::RunningLoop()
-{
-	//UWorld* World = GetWorld(); if (!World) return;
-	////SetActorRotation(FMath::RInterpTo(GetActorRotation(), GetRunningRotation(), World->GetDeltaSeconds(), 10.f));
-	//SetActorRotation(GetRunningRotation());
-	//
-	//NewTargetRot = GetRunningRotation();
-	////SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 5.f);
 }
 
 void APlayerCam::StartDash()
@@ -238,13 +307,6 @@ void APlayerCam::DashingLoop()
 }
 
 
-void APlayerCam::StartPreparingToDash()
-{
-}
-
-void APlayerCam::StartStartingDash()
-{
-}
 
 void APlayerCam::StartingDashLoop()
 {
@@ -253,17 +315,7 @@ void APlayerCam::StartingDashLoop()
 
 void APlayerCam::DoLoops()
 {
-	if (Player->ActionState == EActionState::PREPARING_TO_DASH)
-	{
-		PreparingToDashLoop();
-		return;
-	}
-	if (Player->ActionState == EActionState::STARTING_DASH)
-	{
-		StartingDashLoop();
-		return;
-	}
-	else if (Player->ActionState == EActionState::DASHING)
+	if (Player->ActionState == EActionState::DASHING)
 	{
 		DashingLoop();
 		return;
@@ -272,24 +324,21 @@ void APlayerCam::DoLoops()
 	{
 		PreparingToAttackLoop();
 	}
-	else if (Player->ActionState == EActionState::ATTACKING)
+	else if (Player->ActionState == EActionState::STARTING_ATTACK)
 	{
 		AttackingLoop();
 		return;
 	}
 	else if (Player->ActionState == EActionState::ATTACKING_HIT)
 	{
+		AttackingLoop();
 		AttackingHitLoop();
 		return;
 	}
 	else if (Player->ActionState == EActionState::ENDING_ATTACK)
 	{
+		AttackingLoop();
 		EndingAttackLoop();
-		return;
-	}
-	else if (Player->ActionState == EActionState::RUNNING)
-	{
-		RunningLoop();
 		return;
 	}
 
