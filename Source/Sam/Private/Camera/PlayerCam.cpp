@@ -174,6 +174,7 @@ void APlayerCam::PreparingToAttackLoop()
 
 void APlayerCam::StartAttacking()
 {
+	CameraControlAccumulatedTime = 0.f;
 }
 
 void APlayerCam::AttackingLoop()
@@ -208,7 +209,7 @@ void APlayerCam::AttackingLoop()
 	MaxTime = FMath::Max(ZoomMaxTime, RotMaxTime);
 	MaxTime = FMath::Max(MaxTime, LocMaxTime);
 
-	if (Player->ActionState == EActionState::STARTING_ATTACK || Player->ActionState == EActionState::ATTACKING_HIT)
+	if (Player->ActionState == EActionState::ATTACKING)
 	{
 		// Is Current timeline finished forwards
 		if (CameraControlAccumulatedTime > MaxTime)
@@ -220,7 +221,7 @@ void APlayerCam::AttackingLoop()
 			CameraControlAccumulatedTime += World->DeltaRealTimeSeconds;
 		}
 	}
-	else if (Player->ActionState == EActionState::ENDING_ATTACK)
+	else if (Player->AttackStage == EAttackStage::ENDING)
 	{
 		// Is Current timeline finished backwards
 		if (CameraControlAccumulatedTime < 0)
@@ -247,13 +248,13 @@ void APlayerCam::AttackingLoop()
 
 	const float Alpha = FMath::GetMappedRangeValueClamped(FVector2D(0, MaxTime), FVector2D(0, 1), CameraControlAccumulatedTime);
 
-	if (Player->ActionState == EActionState::STARTING_ATTACK || Player->ActionState == EActionState::ATTACKING_HIT || !Player->CurrentTarget)
+	if (Player->AttackStage == EAttackStage::STARTING || Player->AttackStage == EAttackStage::HITTING || !Player->CurrentTarget)
 	{
 		NewTargetRot = Rot + GetRunningRotation();
 		return;
 	}
 
-	if (Player->ActionState == EActionState::ENDING_ATTACK)
+	if (Player->AttackStage == EAttackStage::ENDING)
 	{
 		if (!Player->CurrentTarget) return;
 		FRotator LookAtTargetRot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), Player->CurrentTarget->GetActorLocation());
@@ -271,11 +272,11 @@ void APlayerCam::AttackingLoop()
 void APlayerCam::StartAttackingHit()
 {
 	PlayCameraShake(CameraShakeOnEnemyHitWeak);
-	
 }
 
 void APlayerCam::AttackingHitLoop()
 {
+
 }
 
 void APlayerCam::StartEndingAttack()
@@ -297,6 +298,7 @@ void APlayerCam::PreparingToDashLoop()
 
 void APlayerCam::StartDash()
 {
+
 }
 
 void APlayerCam::DashingLoop()
@@ -306,12 +308,10 @@ void APlayerCam::DashingLoop()
 	MoveToDefaultLoop();
 }
 
-
-
 void APlayerCam::StartingDashLoop()
 {
-}
 
+}
 
 void APlayerCam::DoLoops()
 {
@@ -320,22 +320,22 @@ void APlayerCam::DoLoops()
 		DashingLoop();
 		return;
 	}
-	else if (Player->ActionState == EActionState::PREPARING_TO_ATTACK)
-	{
-		PreparingToAttackLoop();
-	}
-	else if (Player->ActionState == EActionState::STARTING_ATTACK)
+	//else if (Player->ActionState == EActionState::PREPARING_TO_ATTACK)
+	//{
+	//	PreparingToAttackLoop();
+	//}
+	else if (Player->ActionState == EActionState::ATTACKING)
 	{
 		AttackingLoop();
 		return;
 	}
-	else if (Player->ActionState == EActionState::ATTACKING_HIT)
+	else if (Player->AttackStage == EAttackStage::HITTING)
 	{
 		AttackingLoop();
 		AttackingHitLoop();
 		return;
 	}
-	else if (Player->ActionState == EActionState::ENDING_ATTACK)
+	else if (Player->AttackStage == EAttackStage::ENDING)
 	{
 		AttackingLoop();
 		EndingAttackLoop();
@@ -371,7 +371,6 @@ void APlayerCam::ApplyRotation()
 	SetActorRotation(FMath::RInterpTo(GetActorRotation(), NewTargetRot, World->DeltaTimeSeconds, 9));
 }
 
-
 void APlayerCam::MoveToDefaultLoop()
 {
 	UWorld* World = GetWorld(); if (!World) return;
@@ -379,7 +378,6 @@ void APlayerCam::MoveToDefaultLoop()
 	SpringArm->SocketOffset	   = FMath::VInterpTo(SpringArm->SocketOffset, StartingSpringOffset, World->GetDeltaSeconds(), 7.f);
 	SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, StartingSpringArmLength, World->GetDeltaSeconds(), 7.f);
 }
-
 
 void APlayerCam::PlayCameraShake(TSoftClassPtr<UCameraShakeBase> CameraShakeClass)
 {

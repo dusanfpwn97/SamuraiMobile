@@ -18,12 +18,17 @@ enum class EActionState : uint8
 {
 	NOT_MOVING,
 	DASHING,
-	PREPARING_TO_ATTACK,
-	STARTING_ATTACK,
-	ATTACKING_HIT,
-	ENDING_ATTACK
+	ATTACKING
 };
 
+UENUM(BlueprintType)
+enum class EAttackStage : uint8
+{
+	NONE,
+	STARTING,
+	HITTING,
+	ENDING
+};
 
 USTRUCT(BlueprintType)
 struct FAttackInfo
@@ -38,8 +43,6 @@ struct FAttackInfo
 	UAnimMontage* AttackMontage;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UCurveFloat* StartAttackSlomoCurve;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	UCurveFloat* StartDashSpeedCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UCurveFloat* CameraZoomCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -79,6 +82,8 @@ public:
 		AActor* CurrentTarget;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 		EActionState ActionState;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
+		EAttackStage AttackStage;
 
 protected:
 
@@ -92,6 +97,8 @@ protected:
 	void SpawnCamera();
 	UFUNCTION(BlueprintImplementableEvent)
 	void BP_OnCameraCreated();
+
+	bool HasSetInitialCameraTarget = false;
 
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
@@ -126,9 +133,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	bool IsInDamageWindow = false;
 
-	float DashAccumulatedTime = -1;
-	float CurrentHitSlowMoAccumulatedTime = -1;
-	float AttackAccumulatedTime = -1;
+	float DashStartedRealTime = -1;
+	float DashStartedTime = -1;
+	float StartAttackRealTime = -1;
+	float StartAttackTime = -1;
+	float WeaponHitStartedRealTime = -1;
+	float WeaponHitStartedTime = -1;
+	
 
 	ASlashIndicator* SlashIndicator;
 	//
@@ -150,19 +161,10 @@ protected:
 	void StartDashing();
 	void DashingLoop();
 
-	void StartPreparingToAttack();
-	void PreparingToAttackLoop();
-
 	void StartAttacking();
 	void AttackingLoop();
-	void StopAttackLoop();
+	void StopAttacking();
 
-	void StartAttackingHit();
-	void AttackingHitLoop();
-
-	void StartEndingAttack();
-	void EndingAttackLoop();
-	
 	void UpdateDirection();
 
 
