@@ -128,7 +128,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	ABaseWeapon* CurrentWeapon;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
-	TSubclassOf<class ASlashIndicator> SlashIndicatorClass;
+	TSubclassOf<class AHitIndicator> HitIndicatorClass;
 	AActor* LastAttackedTarget;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 	bool IsInDamageWindow = false;
@@ -141,7 +141,7 @@ protected:
 	float WeaponHitStartedTime = -1;
 	
 
-	ASlashIndicator* SlashIndicator;
+	AHitIndicator* HitIndicator;
 	//
 	void SetStartingValues();
 	void MoveTowardsDirection();

@@ -17,7 +17,7 @@
 #include "Animation/AnimMontage.h"
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveVector.h"
-#include "Misc/SlashIndicator.h"
+#include "Misc/HitIndicator.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Camera/PlayerCam.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -198,8 +198,6 @@ bool APlayerPawn::GetTargetUnderFinger(ETouchIndex::Type FingerIndex)
 	
 }
 
-
-
 void APlayerPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -229,7 +227,6 @@ void APlayerPawn::BeginPlay()
 
 
 }
-
 
 void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 {
@@ -263,9 +260,9 @@ void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 
 void APlayerPawn::TryToSlash()
 {
-	if (SlashIndicator)
+	if (HitIndicator)
 	{
-		SlashIndicator->Destroy();
+		HitIndicator->Destroy();
 	}
 
 	CustomTimeDilation = 0.75;
@@ -292,7 +289,7 @@ void APlayerPawn::OnDamageNotifyStarted()
 	Transform.SetScale3D(FVector(1.f, 1.f, 1.f));
 	Transform.SetLocation(CurrentTarget->GetActorLocation() + FVector(0, 0, 30.f));
 
-	SlashIndicator = (ASlashIndicator*)World->SpawnActor<ASlashIndicator>(SlashIndicatorClass, Transform);
+	HitIndicator = (AHitIndicator*)World->SpawnActor<AHitIndicator>(HitIndicatorClass, Transform);
 
 
 }
@@ -322,7 +319,7 @@ void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 	
 	// TODO this will cause problems for multiple enemies
 	CurrentWeapon->StopCheckingCollision();
-	CurrentTarget = nullptr;
+	
 
 	AttackStage = EAttackStage::HITTING;
 	
