@@ -46,6 +46,8 @@ void APlayerPawn::SetStartingValues()
 {
 	//StartPreparingToDash();
 	//StartRunning();
+
+	PickRandomAttackInfo();
 	
 }
 
@@ -217,11 +219,29 @@ void APlayerPawn::Tick(float DeltaTime)
 	
 }
 
+void APlayerPawn::PickRandomAttackInfo()
+{
+	if (AttackInfoIndexOverride < 0)
+	{
+		AttackInfo = AttackInfos[FMath::RandRange(0, AttackInfos.Num() - 1)];
+		return;
+	}
+	else
+	{
+		AttackInfo = AttackInfos[AttackInfoIndexOverride];
+		return;
+	}
+
+
+}
+
 void APlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
 	SpawnCamera();
+
+
 	
 	SetStartingValues();
 
@@ -484,12 +504,17 @@ void APlayerPawn::AttackingLoop()
 
 void APlayerPawn::StopAttacking()
 {
+
 	AttackStage = EAttackStage::NONE;
 	CurrentHitStage = EHitStage::NONE;
 	OnAttackEnded();
+
+	PickRandomAttackInfo();
+
 	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
 	SetNextTarget();
 	StartDashing();
+
 }
 
 

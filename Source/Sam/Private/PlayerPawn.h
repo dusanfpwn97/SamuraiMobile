@@ -81,8 +81,12 @@ public:
 
 	bool GetTargetUnderFinger(ETouchIndex::Type FingerIndex);
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Setup")
+		TArray<FAttackInfo> AttackInfos;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Runtime")
 		FAttackInfo AttackInfo;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Debug")
+		int32 AttackInfoIndexOverride = -1;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
 		AActor* CurrentTarget;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Runtime")
@@ -91,7 +95,7 @@ public:
 		EAttackStage AttackStage;
 
 protected:
-
+	void PickRandomAttackInfo();
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

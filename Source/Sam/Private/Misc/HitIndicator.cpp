@@ -76,7 +76,7 @@ void AHitIndicator::SetInitialPositions()
 	MovingStartingLoc = Moving->GetComponentLocation();
 
 	// Use random movement curve
-	MovementCurveToUse = MovementCurves[FMath::FloorToInt32(FMath::FRand() * MovementCurves.Num())];
+	MovementCurveToUse = MovementCurves[FMath::RandRange(0, MovementCurves.Num() - 1)];
 
 
 	MoveStartRealTime = World->GetRealTimeSeconds();
