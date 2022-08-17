@@ -6,6 +6,7 @@
 #include "Components/SceneComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Camera/PlayerCameraManager.h"
+#include "NiagaraComponent.h"
 
 
 // Sets default values
@@ -16,16 +17,16 @@ AHitIndicator::AHitIndicator()
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = Root;
 	
-	Goal = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Goal"));
+	Goal = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Goal"));
 	Goal->SetupAttachment(Root);
-	Goal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Goal->SetGenerateOverlapEvents(false);
+	//Goal->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//Goal->SetGenerateOverlapEvents(false);
 	//Goal->SetRelativeRotation(FRotator(-90, 0, 0));
 
-	Moving = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Moving"));
+	Moving = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Moving"));
 	Moving->SetupAttachment(Root);
-	Moving->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Moving->SetGenerateOverlapEvents(false);
+	//Moving->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//Moving->SetGenerateOverlapEvents(false);
 	//Moving->SetRelativeRotation(FRotator(-90, 0, 0));
 }
 
@@ -61,13 +62,13 @@ void AHitIndicator::SetInitialPositions()
 
 	if (Rand > 0.5)
 	{
-		YRand = FMath::FRandRange(40.f, 60.f);
-		ZRand = FMath::FRandRange(40.f, 60.f);
+		YRand = FMath::FRandRange(50.f, 60.f);
+		ZRand = FMath::FRandRange(50.f, 60.f);
 	}
 	else
 	{
-		YRand = FMath::FRandRange(-40.f, -60.f);
-		ZRand = FMath::FRandRange(-40.f, -60.f);
+		YRand = FMath::FRandRange(-50.f, -60.f);
+		ZRand = FMath::FRandRange(-50.f, -60.f);
 	}
 	
 	
@@ -119,6 +120,6 @@ void AHitIndicator::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	Move();
-	Rotate();
+	//Rotate();
 }
 

@@ -32,9 +32,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class USceneComponent* Root;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UStaticMeshComponent* Goal;
+		class UNiagaraComponent* Goal;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UStaticMeshComponent* Moving;
+		class UNiagaraComponent* Moving;
 
 	EHitStage GetCurrentHitStage();
 
