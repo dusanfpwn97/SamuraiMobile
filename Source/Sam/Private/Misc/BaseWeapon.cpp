@@ -121,6 +121,8 @@ void ABaseWeapon::CheckCollision()
 	}
 	
 	*/
+
+	/*
 	TArray<AActor*> Actors;
 	Mesh->GetOverlappingActors(Actors, AEnemyBase::StaticClass());
 	
@@ -146,6 +148,8 @@ void ABaseWeapon::CheckCollision()
 			}
 		}
 	}
+
+	*/
 }
 
 void ABaseWeapon::StopCheckingCollision()

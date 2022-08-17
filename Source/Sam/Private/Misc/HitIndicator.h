@@ -13,12 +13,12 @@ class UCurveFloat;
 UENUM(BlueprintType)
 enum class EHitStage : uint8
 {
+	NONE,
 	MISS,
 	NEUTRAL,
 	GOOD,
 	PERFECT
 };
-
 
 UCLASS()
 class AHitIndicator : public AActor
@@ -36,12 +36,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UStaticMeshComponent* Moving;
 
+	EHitStage GetCurrentHitStage();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	float GetDistance();
-	EHitStage GetCurrentHitStage();
 
 	FVector MovingStartingLoc;
 

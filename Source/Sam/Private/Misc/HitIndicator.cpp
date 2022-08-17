@@ -44,7 +44,8 @@ float AHitIndicator::GetDistance()
 
 EHitStage AHitIndicator::GetCurrentHitStage()
 {
-	return EHitStage();
+	
+	return EHitStage::PERFECT;
 }
 
 void AHitIndicator::SetInitialPositions()

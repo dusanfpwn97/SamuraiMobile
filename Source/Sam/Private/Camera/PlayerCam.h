@@ -50,7 +50,7 @@ protected:
 	void PreparingToAttackLoop();
 	void DashingLoop();
 
-
+	
 	//UPROPERTY(EditAnywhere)
 	//	class USceneComponent* SceneComp;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

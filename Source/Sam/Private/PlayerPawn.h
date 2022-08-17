@@ -5,7 +5,10 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Misc/CombatInterface.h"
+#include "Misc/HitIndicator.h"
+
 #include "PlayerPawn.generated.h"
+
 
 
 class ABaseWeapon;
@@ -67,6 +70,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void OnDamageNotifyStarted();
+	UFUNCTION(BlueprintCallable)
+		void OnHitNotifyStarted();
 	UFUNCTION(BlueprintCallable)
 	void OnDamageNotifyEnded();
 	UFUNCTION(BlueprintCallable)
@@ -142,11 +147,15 @@ protected:
 	
 
 	AHitIndicator* HitIndicator;
+	EHitStage CurrentHitStage;
+
+	//FTimerHandle ScheduleHitTH;
+
 	//
 	void SetStartingValues();
 	void MoveTowardsDirection();
 	void SetNextTarget();
-	void TryToSlash();
+	void Hit();
 
 
 	UFUNCTION(BlueprintImplementableEvent)

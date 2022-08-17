@@ -17,7 +17,7 @@
 #include "Animation/AnimMontage.h"
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveVector.h"
-#include "Misc/HitIndicator.h"
+
 #include "Kismet/KismetMathLibrary.h"
 #include "Camera/PlayerCam.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -130,9 +130,9 @@ void APlayerPawn::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 		return;
 	}
 
-	if (ActionState == EActionState::ATTACKING)
+	if (ActionState == EActionState::ATTACKING && CurrentHitStage == EHitStage::NONE)
 	{
-		TryToSlash();
+		Hit();
 	}
 }
 
@@ -258,14 +258,31 @@ void APlayerPawn::EquipNewWeapon(TSoftClassPtr<ABaseWeapon> WepClass)
 	Wep->Owner = this;
 }
 
-void APlayerPawn::TryToSlash()
+void APlayerPawn::Hit()
 {
-	if (HitIndicator)
+	if (!HitIndicator) return;
+	CurrentHitStage = HitIndicator->GetCurrentHitStage();
+
+
+	HitIndicator->Destroy();
+	HitIndicator = nullptr;
+
+	CustomTimeDilation = 0.66f;
+
+	if (CurrentHitStage == EHitStage::PERFECT)
 	{
-		HitIndicator->Destroy();
+		if (CurrentTarget)
+		{
+			if (CurrentTarget->GetClass()->ImplementsInterface(UCombatInterface::StaticClass()))
+			{
+				ICombatInterface* TempInterface = Cast<ICombatInterface>(CurrentTarget);
+				if (!TempInterface) return;
+				TempInterface->OnWeaponHit(this, "None");
+			}
+		}
 	}
 
-	CustomTimeDilation = 0.75;
+
 
 }
 
@@ -294,6 +311,26 @@ void APlayerPawn::OnDamageNotifyStarted()
 
 }
 
+void APlayerPawn::OnHitNotifyStarted()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Enemy Hit")));
+
+	// TODO this will cause problems for multiple enemies
+	CurrentWeapon->StopCheckingCollision();
+
+
+	AttackStage = EAttackStage::HITTING;
+
+	WeaponHitStartedRealTime = World->GetRealTimeSeconds();
+	WeaponHitStartedTime = World->GetTimeSeconds();
+
+	Camera->StartAttackingHit();
+
+	//GetCharacterMovement()->MaxWalkSpeed = 0;
+}
+
 void APlayerPawn::OnDamageNotifyEnded()
 {
 	if (CurrentWeapon) CurrentWeapon->StopCheckingCollision();
@@ -311,24 +348,10 @@ const bool APlayerPawn::IsAttacking()
 	
 }
 
+
 void APlayerPawn::OnWeaponHitEnemy(AActor* Actor, FName Bone)
 {
-	UWorld* World = GetWorld(); if (!World) return;
-
-	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, FString::Printf(TEXT("Enemy Hit")));
 	
-	// TODO this will cause problems for multiple enemies
-	CurrentWeapon->StopCheckingCollision();
-	
-
-	AttackStage = EAttackStage::HITTING;
-	
-	WeaponHitStartedRealTime = World->GetRealTimeSeconds();
-	WeaponHitStartedTime = World->GetTimeSeconds();
-
-	Camera->StartAttackingHit();
-
-	GetCharacterMovement()->MaxWalkSpeed = 0;
 }
 
 
@@ -388,7 +411,6 @@ void APlayerPawn::DashingLoop()
 	if (FVector::Distance(CurrentTarget->GetActorLocation(), GetActorLocation()) > AttackInfo.DistanceForSlowdown) return;
 	StartAttacking();
 
-	
 }
 
 void APlayerPawn::StartAttacking()
@@ -463,6 +485,7 @@ void APlayerPawn::AttackingLoop()
 void APlayerPawn::StopAttacking()
 {
 	AttackStage = EAttackStage::NONE;
+	CurrentHitStage = EHitStage::NONE;
 	OnAttackEnded();
 	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Stop attack")));
 	SetNextTarget();
