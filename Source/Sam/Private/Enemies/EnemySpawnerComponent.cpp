@@ -4,6 +4,7 @@
 #include "Enemies/EnemySpawnerComponent.h"
 #include "Enemies/EnemyBase.h"
 #include "Math/UnrealMathUtility.h"
+#include "Misc/HelperLibrary.h"
 
 
 
@@ -38,17 +39,19 @@ void UEnemySpawnerComponent::SpawnEnemy()
 	UWorld* World = GetWorld();
 	if (!World || !ClassToSpawn.IsValid()) return;
 
-	if (SpawnedEnemies.Num() >= 10)
+	if (SpawnedEnemies.Num() >= 20)
 	{
 		World->GetTimerManager().ClearTimer(EnemySpawnTH);
 	}
 
-	float Y = FMath::FRandRange(-700.f, 700.f); // left right
-	float X = SpawnedEnemies.Num() * FMath::FRandRange(1000.f, 1300.f) + 800.f; // Distance apart
-	
+	//float Y = FMath::FRandRange(-700.f, 700.f); // left right
+	//float X = SpawnedEnemies.Num() * FMath::FRandRange(1000.f, 1300.f) + 800.f; // Distance apart
+	//FVector Loc = FVector(X, Y, 86.f);
 	UClass* TempClass = ClassToSpawn.Get();
+	if (!TempClass) return;
 
-	FVector Loc = FVector(X, Y, 86.f);
+	FVector Loc = UHelperLibrary::GetRandomPointInCircle(FVector::ZeroVector, SpawnedEnemies.Num() * 200 + 1200);
+	Loc.Z = 86.f;
 	FRotator Rot = FRotator(0, 180, 0);
 
 	AEnemyBase* SpawnedActor = (AEnemyBase*) SpawnActorFromPool(TempClass);

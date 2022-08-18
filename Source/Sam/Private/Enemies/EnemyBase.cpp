@@ -6,6 +6,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Enemies/EnemySpawnerComponent.h"
 #include "Misc/Pool/PoolManager.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
@@ -55,6 +56,21 @@ void AEnemyBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	UpdatePlayerPawn();
+}
+
+void AEnemyBase::RotateTowardsPlayer()
+{
+	if (!PlayerPawn)
+	{
+		UpdatePlayerPawn();
+		if (!PlayerPawn) return;
+	}
+
+	FRotator NewRot = (PlayerPawn->GetActorLocation() - GetActorLocation()).Rotation();
+	NewRot.Roll = 0;
+	NewRot.Pitch = 0;
+	SetActorRotation(NewRot);
 }
 
 void AEnemyBase::ActivateRagdoll()
@@ -76,10 +92,17 @@ void AEnemyBase::OnWeaponHit(AActor* Actor, FName Bone)
 	Die();
 }
 
+void AEnemyBase::UpdatePlayerPawn()
+{
+	UWorld* World = GetWorld(); if (!World) return;
+	PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0);
+}
+
 // Called every frame
 void AEnemyBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	RotateTowardsPlayer();
 }
 

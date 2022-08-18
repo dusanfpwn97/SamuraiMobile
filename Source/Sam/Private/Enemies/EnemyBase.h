@@ -38,10 +38,15 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	void RotateTowardsPlayer();
 
 	void ActivateRagdoll();
 
 	virtual void OnWeaponHit(AActor* Actor, FName Bone) override;
+
+	class APawn* PlayerPawn;
+
+	void UpdatePlayerPawn();
 
 public:	
 	// Called every frame
